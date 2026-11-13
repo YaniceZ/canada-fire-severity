@@ -1,0 +1,42 @@
+{
+  "pixels": 316450,
+  "area_ha": 28480.5,
+  "spearman_ndmi_change_vs_rbr": 0.004,
+  "spearman_ndmi_change_vs_dnbr": 0.099,
+  "spearman_ndmi_change_vs_nbr_pre": 0.356,
+  "by_decline_class": [
+    {
+      "group": "strong decline",
+      "area_ha": 10140.3,
+      "rbr_median": 0.566,
+      "dnbr_median": 0.741,
+      "nbr_pre_median": 0.314,
+      "high_severity_share": 0.689
+    },
+    {
+      "group": "moderate decline",
+      "area_ha": 5826.5,
+      "rbr_median": 0.572,
+      "dnbr_median": 0.761,
+      "nbr_pre_median": 0.347,
+      "high_severity_share": 0.683
+    },
+    {
+      "group": "slight decline",
+      "area_ha": 3873.5,
+      "rbr_median": 0.565,
+      "dnbr_median": 0.748,
+      "nbr_pre_median": 0.359,
+      "high_severity_share": 0.671
+    },
+    {
+      "group": "stable or gain",
+      "area_ha": 8640.2,
+      "rbr_median": 0.566,
+      "dnbr_median": 0.773,
+      "nbr_pre_median": 0.401,
+      "high_severity_share": 0.673
+    }
+  ],
+  "note": "Descriptive only. Not adjusted for terrain, fire weather or pre-fire canopy."
+}
