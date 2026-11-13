@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from shapely.geometry import box
 
-from jasperfire import beetle, blocks, compare, indices, lidar, sources
+from jasperfire import beetle, blocks, canopy, compare, indices, lidar, sources
 from jasperfire.perimeter import select_fire
 from jasperfire.scenes import Scene, pick_scenes
 
@@ -197,3 +197,30 @@ def test_group_table_reports_area_and_medians():
     rows = compare.group_table(groups, ("a", "b"), {"x": np.array([1.0, 3.0, 10.0, 99.0])}, hectares=0.09)
     assert rows[0] == {"group": "a", "area_ha": 0.2, "x": 2.0}
     assert rows[1]["x"] == 10.0
+
+
+# --- canopy loss -----------------------------------------------------------
+
+
+def test_block_stats_gives_mean_height_and_cover_per_block():
+    chm = np.zeros((4, 4), dtype="float32")
+    chm[:2, :2] = [[10, 10], [0, 0]]  # half of this block is 10 m canopy
+    chm[2:, 2:] = np.nan  # a block with no data
+    height, cover = canopy.block_stats(chm, block=2)
+    assert height[0, 0] == pytest.approx(5.0) and cover[0, 0] == pytest.approx(0.5)
+    assert height[0, 1] == 0.0 and cover[0, 1] == 0.0
+    assert np.isnan(height[1, 1]) and np.isnan(cover[1, 1])
+
+
+def test_block_stats_ignores_missing_pixels_when_most_are_present():
+    chm = np.array([[8.0, 8.0], [8.0, np.nan]], dtype="float32")
+    height, cover = canopy.block_stats(chm, block=2)
+    assert height[0, 0] == pytest.approx(8.0) and cover[0, 0] == pytest.approx(1.0)
+
+
+def test_relative_loss_skips_low_canopy_and_allows_growth():
+    before = np.array([20.0, 10.0, 1.0], dtype="float32")
+    after = np.array([5.0, 12.0, 0.0], dtype="float32")
+    out = canopy.relative_loss(before, after, floor=3.0)
+    assert out[:2] == pytest.approx([0.75, -0.2])
+    assert np.isnan(out[2])

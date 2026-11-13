@@ -256,5 +256,103 @@ def figure(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
     return paths
 
 
+def _violins(ax, samples: list[np.ndarray], colors, labels, value_y: float) -> None:
+    """Violins with an interquartile bar, a median dot and the median printed below."""
+    parts = ax.violinplot(samples, positions=range(len(samples)), widths=0.82, showextrema=False)
+    for body, color in zip(parts["bodies"], colors, strict=True):
+        body.set_facecolor(color)
+        body.set_edgecolor(INK)
+        body.set_linewidth(0.3)
+        body.set_alpha(0.8)
+    for i, values in enumerate(samples):
+        q1, median, q3 = np.percentile(values, [25, 50, 75])
+        ax.plot([i, i], [q1, q3], color=INK, linewidth=1.6, solid_capstyle="butt", zorder=3)
+        ax.plot(i, median, marker="o", markersize=3.2, color="white", markeredgecolor=INK, markeredgewidth=0.7, zorder=4)
+        ax.text(i, value_y, f"{median:.2f}", ha="center", va="top", fontsize=6.5)
+    ax.set_xticks(range(len(samples)), labels)
+
+
+def canopy_figure(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
+    """Figure 2: LiDAR canopy height loss as a map, by burn severity class and by decline class."""
+    plt = _style()
+    from rasterio.features import geometry_mask
+
+    from jasperfire import canopy, indices
+    from jasperfire.perimeter import load_perimeter
+
+    data = _layers(out_dir)
+    grid = data["grid"]
+    perimeter = load_perimeter(data_dir).to_crs(grid.crs)
+    stats = json.loads((out_dir / "canopy_summary.json").read_text(encoding="utf-8"))
+
+    loss = beetle.read_on_grid(str(out_dir / "canopy_height_loss.tif"), grid)
+    core = perimeter.geometry.union_all().buffer(-canopy.EDGE_M)
+    inside = ~geometry_mask([core], out_shape=loss.shape, transform=grid.transform)
+    keep = inside & data["study"] & ~np.isnan(loss) & ~np.isnan(data["rbr"])
+    # A few cells grew or lost nothing; clip so the violins share one readable axis.
+    shown_loss = np.clip(loss, -0.1, 1.0)
+
+    fig = plt.figure(figsize=(WIDTH_IN, 4.45))
+    outer = fig.add_gridspec(1, 2, width_ratios=[1, 2.0], wspace=0.2, left=0.03, right=0.985, top=0.95, bottom=0.115)
+    ax_a = fig.add_subplot(outer[0])
+    charts = outer[1].subgridspec(2, 1, hspace=0.5)
+    ax_b = fig.add_subplot(charts[0])
+    ax_c = fig.add_subplot(charts[1])
+
+    _base_map(ax_a, data, perimeter, "a", "Canopy height loss, 2019 to 2024")
+    extent = _extent(grid)
+    shown = np.ma.masked_invalid(loss)
+    image = ax_a.imshow(shown, extent=extent, cmap="YlOrBr", vmin=0, vmax=1, interpolation="nearest", alpha=0.9, zorder=2)
+    cax = ax_a.inset_axes([0.14, -0.055, 0.72, 0.022])
+    bar = fig.colorbar(image, cax=cax, orientation="horizontal", ticks=[0, 0.25, 0.5, 0.75, 1.0], extend="min")
+    bar.outline.set_linewidth(0.4)
+    bar.ax.tick_params(length=2, pad=1.5)
+    bar.set_label("Share of 2019 canopy height lost", labelpad=1.5)
+
+    samples = [shown_loss[keep & (data["severity"] == i)] for i in range(len(indices.SEVERITY_NAMES))]
+    labels = [name.capitalize() for name in indices.SEVERITY_NAMES]
+    _violins(ax_b, samples, SEVERITY_COLORS, labels, value_y=-0.2)
+    rho = stats["spearman_height_loss_vs_rbr"]
+    ax_b.set_title(f"LiDAR height loss by satellite severity class (ρ with RBR = {rho:.2f})", loc="left", pad=3)
+    ax_b.set_xlabel("dNBR severity class")
+    ax_b.text(-0.09, 1.03, "b", transform=ax_b.transAxes, fontsize=9, fontweight="bold", ha="right", va="bottom")
+
+    groups = np.where(keep, beetle.classify_decline(data["change"]), 255)
+    samples = [shown_loss[groups == i] for i in range(len(DECLINE_COLORS))]
+    _violins(ax_c, samples, DECLINE_COLORS, DECLINE_SHORT, value_y=-0.2)
+    unburned = [row["unburned"]["height_loss_share"] for row in stats["by_decline_class"]]
+    for i, value in enumerate(unburned):
+        ax_c.plot([i - 0.3, i + 0.3], [value, value], color=INK, linewidth=0.8, linestyle=(0, (3, 2)), zorder=5)
+    ax_c.annotate(
+        "unburned forest nearby",
+        (len(unburned) - 1 + 0.3, unburned[-1]),
+        xytext=(4, 0),
+        textcoords="offset points",
+        va="center",
+        fontsize=6,
+        color=MUTED,
+    )
+    ax_c.set_xlim(-0.6, len(unburned) - 1 + 1.25)
+    rho = stats["spearman_height_loss_vs_ndmi_change"]
+    ax_c.set_title(f"LiDAR height loss by pre-fire decline class (ρ = {rho:.2f})", loc="left", pad=3)
+    ax_c.set_xlabel("Pre-fire decline class")
+    ax_c.text(-0.09, 1.03, "c", transform=ax_c.transAxes, fontsize=9, fontweight="bold", ha="right", va="bottom")
+
+    for ax in (ax_b, ax_c):
+        ax.set_ylim(-0.38, 1.02)
+        ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+        ax.axhline(0, color=RULE, linewidth=0.5, zorder=0)
+        ax.set_ylabel("Height loss share")
+
+    paths = [fig_dir / "figure2.png", fig_dir / "figure2.pdf"]
+    for path in paths:
+        fig.savefig(path, dpi=300)
+    plt.close(fig)
+    return paths
+
+
 def run(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
-    return figure(out_dir, data_dir, fig_dir)
+    paths = figure(out_dir, data_dir, fig_dir)
+    if (out_dir / "canopy_summary.json").exists():
+        paths += canopy_figure(out_dir, data_dir, fig_dir)
+    return paths

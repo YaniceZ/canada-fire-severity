@@ -1,0 +1,175 @@
+{
+  "cell_m": 30.0,
+  "forest_rule": "conifer in 2010 and mean canopy height of at least 3.0 m in 2019",
+  "lidar_2019_share_of_fire": 0.764,
+  "lidar_2024_share_of_fire": 0.857,
+  "height_loss_quartiles_burned": [
+    0.765,
+    0.902,
+    0.961
+  ],
+  "burned": {
+    "area_ha": 16576.8,
+    "height_2019_m": 12.689,
+    "height_2024_m": 1.177,
+    "height_loss_share": 0.902,
+    "cover_2019": 0.964,
+    "cover_2024": 0.145,
+    "cover_change": -0.764
+  },
+  "unburned": {
+    "area_ha": 310.1,
+    "height_2019_m": 12.001,
+    "height_2024_m": 9.652,
+    "height_loss_share": 0.132,
+    "cover_2019": 0.928,
+    "cover_2024": 0.862,
+    "cover_change": -0.026
+  },
+  "spearman_height_loss_vs_rbr": 0.491,
+  "spearman_height_loss_vs_ndmi_change": -0.059,
+  "spearman_height_loss_vs_ndmi_change_unburned": -0.244,
+  "by_severity_class": [
+    {
+      "group": "unburned",
+      "area_ha": 40.2,
+      "height_2019_m": 7.48,
+      "height_2024_m": 4.261,
+      "height_loss_share": 0.217,
+      "cover_2019": 0.715,
+      "cover_2024": 0.509,
+      "cover_change": -0.093
+    },
+    {
+      "group": "low",
+      "area_ha": 195.8,
+      "height_2019_m": 9.008,
+      "height_2024_m": 5.34,
+      "height_loss_share": 0.299,
+      "cover_2019": 0.832,
+      "cover_2024": 0.588,
+      "cover_change": -0.139
+    },
+    {
+      "group": "moderate-low",
+      "area_ha": 549.3,
+      "height_2019_m": 10.746,
+      "height_2024_m": 6.253,
+      "height_loss_share": 0.402,
+      "cover_2019": 0.924,
+      "cover_2024": 0.666,
+      "cover_change": -0.209
+    },
+    {
+      "group": "moderate-high",
+      "area_ha": 3399.1,
+      "height_2019_m": 11.593,
+      "height_2024_m": 2.686,
+      "height_loss_share": 0.719,
+      "cover_2019": 0.939,
+      "cover_2024": 0.347,
+      "cover_change": -0.495
+    },
+    {
+      "group": "high",
+      "area_ha": 12392.4,
+      "height_2019_m": 13.107,
+      "height_2024_m": 0.901,
+      "height_loss_share": 0.927,
+      "cover_2019": 0.971,
+      "cover_2024": 0.107,
+      "cover_change": -0.819
+    }
+  ],
+  "by_decline_class": [
+    {
+      "group": "strong decline",
+      "burned": {
+        "area_ha": 5617.5,
+        "height_2019_m": 15.457,
+        "height_2024_m": 1.29,
+        "height_loss_share": 0.915,
+        "cover_2019": 0.99,
+        "cover_2024": 0.16,
+        "cover_change": -0.817
+      },
+      "unburned": {
+        "area_ha": 87.4,
+        "height_2019_m": 15.812,
+        "height_2024_m": 13.92,
+        "height_loss_share": 0.13,
+        "cover_2019": 0.994,
+        "cover_2024": 0.978,
+        "cover_change": -0.013
+      },
+      "extra_height_loss_in_fire": 0.785
+    },
+    {
+      "group": "moderate decline",
+      "burned": {
+        "area_ha": 3508.8,
+        "height_2019_m": 12.813,
+        "height_2024_m": 1.332,
+        "height_loss_share": 0.891,
+        "cover_2019": 0.964,
+        "cover_2024": 0.165,
+        "cover_change": -0.761
+      },
+      "unburned": {
+        "area_ha": 37.4,
+        "height_2019_m": 13.144,
+        "height_2024_m": 9.465,
+        "height_loss_share": 0.204,
+        "cover_2019": 0.963,
+        "cover_2024": 0.878,
+        "cover_change": -0.054
+      },
+      "extra_height_loss_in_fire": 0.687
+    },
+    {
+      "group": "slight decline",
+      "burned": {
+        "area_ha": 2378.5,
+        "height_2019_m": 11.037,
+        "height_2024_m": 1.329,
+        "height_loss_share": 0.872,
+        "cover_2019": 0.93,
+        "cover_2024": 0.167,
+        "cover_change": -0.706
+      },
+      "unburned": {
+        "area_ha": 34.0,
+        "height_2019_m": 11.985,
+        "height_2024_m": 8.785,
+        "height_loss_share": 0.186,
+        "cover_2019": 0.939,
+        "cover_2024": 0.867,
+        "cover_change": -0.048
+      },
+      "extra_height_loss_in_fire": 0.686
+    },
+    {
+      "group": "stable or gain",
+      "burned": {
+        "area_ha": 5071.9,
+        "height_2019_m": 9.695,
+        "height_2024_m": 0.897,
+        "height_loss_share": 0.898,
+        "cover_2019": 0.896,
+        "cover_2024": 0.109,
+        "cover_change": -0.715
+      },
+      "unburned": {
+        "area_ha": 151.4,
+        "height_2019_m": 8.241,
+        "height_2024_m": 7.452,
+        "height_loss_share": 0.109,
+        "cover_2019": 0.758,
+        "cover_2024": 0.724,
+        "cover_change": -0.033
+      },
+      "extra_height_loss_in_fire": 0.789
+    }
+  ],
+  "note": "The unburned group is conifer forest 90 to 1500 m outside the perimeter. It shows how much canopy the two surveys differ without fire, from tree fall, growth and differences in processing. The 2024 survey was flown over the burned area, so this group is small."
+}

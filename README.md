@@ -2,7 +2,7 @@
 
 Burn severity, pre-fire forest decline and canopy loss for the 2024 Jasper wildfire, from Sentinel-2, Landsat and 1 m airborne LiDAR. Everything runs on open data and reads only the part of each file it needs.
 
-**Status: first pass done.** Burn severity, the pre-fire decline map and a first comparison are in place. The comparison is descriptive; the modelling in "Next" is not done.
+**Status: descriptive results done.** Burn severity from Sentinel-2, canopy loss from LiDAR, the pre-fire decline map and their comparison are in place. The modelling in "Next" is not done.
 
 ## The question
 
@@ -35,9 +35,31 @@ Medians per class. The rank correlation between NDMI change and RBR is 0.004 acr
 
 This does not show that beetle kill had no effect. Most of the fire burned as a crown fire in extreme weather, so the satellite index is close to its ceiling everywhere and cannot separate degrees of "very severe". Dead pine may also have changed how fast the fire spread, which this index does not measure. And nothing here is adjusted for terrain or for the weather on the day each stand burned.
 
-## LiDAR check
+**4. LiDAR agrees with the satellite index, and also finds no difference between declined and stable stands.**
 
-In one 500 m window of high dNBR, the LiDAR canopy above 2 m covered 99% of the ground in 2019 and 19% in October 2024. Thin burned stems are easy to miss in a 1 m surface model, so part of that drop is foliage and branches, not trees that fell.
+![Three panels: canopy height loss map, height loss by severity class, height loss by decline class](docs/figure2.png)
+
+*(a) Share of the 2019 mean canopy height that was gone in October 2024, per 30 m cell, where both LiDAR surveys have data. (b) That share by dNBR severity class. (c) The same by pre-fire decline class; dashed lines are the medians in unburned conifer forest just outside the perimeter.*
+
+Canopy height is the 1 m surface model minus the 1 m terrain model, read at full resolution for 2019 and 2024 and averaged to 30 m. Both surveys cover 66% of the fire, which leaves 16,577 ha of conifer forest to compare.
+
+| dNBR class | Area (ha) | Median height loss |
+|---|---:|---:|
+| Unburned | 40 | 22% |
+| Low | 196 | 30% |
+| Moderate-low | 549 | 40% |
+| Moderate-high | 3,399 | 72% |
+| High | 12,392 | 93% |
+
+The height loss rises step by step with the satellite class (rank correlation with RBR 0.49), so the two independent measurements tell the same story. That is a check on the dNBR classes that did not need field plots.
+
+By decline class the median loss is 92%, 89%, 87% and 90%, from strong decline to stable, and the rank correlation with NDMI change is -0.06. So the second measure gives the same answer as the first: no meaningful difference. It also reaches a ceiling, because the fire took about 90% of the canopy height over most of the area (half of all cells lost between 77% and 96%).
+
+Three things to keep in mind:
+
+- A 1 m surface model sees foliage and branches much better than thin bare stems. A stand of standing burned trunks reads as a large height loss even though the trees have not fallen.
+- Unburned forest next to the fire also shows a median loss of 13% between the surveys, from tree fall, a later survey date and differences in processing. Only 310 ha of it has data from both years, because the 2024 survey was flown over the burned area.
+- The declined stands were the tall ones: median canopy height in 2019 was 15.5 m under strong decline and 9.7 m in stable stands. Decline class and stand structure are tangled together, which is why the next step is a model that includes both.
 
 ## Run it
 
@@ -47,11 +69,12 @@ jasperfire perimeter      # fire perimeter from the National Burned Area Composi
 jasperfire dnbr           # dNBR, RBR and severity classes as GeoTIFFs in out/
 jasperfire beetle         # yearly Landsat NDMI and the change map (about 8 minutes)
 jasperfire compare        # severity by decline class
-jasperfire figures        # the figure above, into docs/
-jasperfire canopy --lon -118.0989 --lat 52.8466    # LiDAR canopy cover, 2019 vs 2024
+jasperfire canopy-loss    # LiDAR canopy height loss for the whole fire (about 6 minutes)
+jasperfire figures        # the figures above, into docs/
+jasperfire canopy --lon -118.0989 --lat 52.8466    # LiDAR canopy cover in one 500 m window
 ```
 
-Every step reads only the window it needs from cloud-hosted files, so nothing large is downloaded apart from the burned-area shapefiles.
+Every step reads only the window it needs from cloud-hosted files. Nothing large is stored apart from the burned-area shapefiles, though `canopy-loss` streams several gigabytes of LiDAR.
 
 ## Data
 
@@ -72,8 +95,8 @@ No open sub-metre imagery of this fire was found. Maxar's open data programme re
 
 ## Next
 
-1. Use LiDAR canopy height loss, 2019 to 2024, as a second severity measure that does not saturate the way dNBR does.
-2. Build a pixel table with slope, aspect, elevation and pre-fire canopy height, and model severity with spatial block cross-validation (`jasperfire.blocks`), so the test areas are not next to the training areas.
+1. Build a pixel table with slope, aspect, elevation and 2019 canopy height, and model severity with spatial block cross-validation (`jasperfire.blocks`), so the test areas are not next to the training areas. This is what can separate beetle decline from stand structure.
+2. Estimate the day each stand burned from active-fire detections and add that day's weather.
 3. Ask Parks Canada for the beetle survey polygons and check the decline map against them.
 4. Follow early regrowth with the 2025 LiDAR and the 2025–2026 imagery.
 
@@ -84,7 +107,7 @@ ruff check .
 pytest -q
 ```
 
-The 24 tests run offline. They cover the index maths, reflectance scaling, cloud masking, yearly compositing, scene choice, canopy height, the block split and the comparison table.
+The 27 tests run offline. They cover the index maths, reflectance scaling, cloud masking, yearly compositing, scene choice, canopy height and cover per cell, the block split and the comparison table.
 
 ## Credits
 
