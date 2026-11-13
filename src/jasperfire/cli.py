@@ -45,7 +45,7 @@ def cmd_compare(args) -> None:
 
 
 def cmd_figures(args) -> None:
-    for path in figures.run(args.out, Path("docs")):
+    for path in figures.run(args.out, args.data, Path("docs")):
         print(path)
 
 
@@ -72,7 +72,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("dnbr", help="compute dNBR, RBR and severity classes").set_defaults(func=cmd_dnbr)
     sub.add_parser("beetle", help="map pre-fire conifer decline from Landsat NDMI").set_defaults(func=cmd_beetle)
     sub.add_parser("compare", help="burn severity by pre-fire decline class").set_defaults(func=cmd_compare)
-    sub.add_parser("figures", help="draw the README figures into docs/").set_defaults(func=cmd_figures)
+    sub.add_parser("figures", help="draw the README figure into docs/").set_defaults(func=cmd_figures)
     canopy = sub.add_parser("canopy", help="LiDAR canopy cover in a window, per survey year")
     canopy.add_argument("--lon", type=float, required=True)
     canopy.add_argument("--lat", type=float, required=True)

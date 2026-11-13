@@ -32,6 +32,9 @@ LANDCOVER_2010_URL = (
     "https://datacube-prod-data-public.s3.ca-central-1.amazonaws.com/store/land/landcover/landcover-2010-classification.tif"
 )
 
+# Shaded relief from the 30 m national terrain model, used only as a map background.
+HILLSHADE_URL = "https://canelevation-dem.s3.ca-central-1.amazonaws.com/mrdem-30/mrdem-30-dtm-hillshade.tif"
+
 # Working grid: UTM zone 11N, the native projection of the Landsat and Sentinel-2 scenes here.
 GRID_CRS = "EPSG:32611"
 

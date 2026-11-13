@@ -10,21 +10,19 @@ Mountain pine beetle killed much of the lodgepole pine around Jasper in the year
 
 ## What it found so far
 
-**1. Almost two thirds of the fire burned at high severity.**
+![Four panels: burn severity map, NDMI change map, yearly NDMI by decline class, and burn ratio by decline class](docs/figure1.png)
 
-![Burn severity map](docs/severity.png)
+*(a) dNBR severity classes inside the fire perimeter. (b) Change in summer NDMI of conifer forest between 2013–15 and 2021–23. (c) Mean summer NDMI per year for four classes of that change; grey bands mark the two periods compared. (d) Relativized burn ratio by class: violins show all pixels, bars the interquartile range, dots and numbers the median. Maps are drawn over shaded relief from the 30 m national terrain model. A vector copy is in `docs/figure1.pdf`.*
+
+**1. Almost two thirds of the fire burned at high severity.**
 
 From Sentinel-2 scenes on 2024-07-07 and 2024-09-05 at 20 m. 98.9% of the perimeter had usable pixels in both scenes. The class breaks are the generic Key and Benson values and have not been calibrated on field plots from this fire, so read the classes as a ranking.
 
 **2. The conifer forest lost moisture sharply in 2018, six years before it burned.**
 
-![NDMI change map and yearly NDMI](docs/beetle.png)
-
 One summer NDMI image per year from Landsat 8/9, 2013 to 2023, over the 28,525 ha that the 2010 land cover maps as conifer inside the perimeter. NDMI fell by more than 0.10 on 36% of that area and by more than 0.05 on 56%. Among declining pixels where the year is known, 2018 was the year of the largest drop on 47% of the area. That timing fits the outbreak Parks Canada reported, but the map has not been checked against field data, and the 2023 values are also lower in the stands that did not decline, which points to drought that year.
 
 **3. Stands that had declined did not burn more severely than stands that had not.**
-
-![Pre-fire NBR, dNBR and RBR by decline class](docs/severity_by_decline.png)
 
 | Pre-fire NDMI change | Area (ha) | Pre-fire NBR | dNBR | RBR | High severity |
 |---|---:|---:|---:|---:|---:|
@@ -49,7 +47,7 @@ jasperfire perimeter      # fire perimeter from the National Burned Area Composi
 jasperfire dnbr           # dNBR, RBR and severity classes as GeoTIFFs in out/
 jasperfire beetle         # yearly Landsat NDMI and the change map (about 8 minutes)
 jasperfire compare        # severity by decline class
-jasperfire figures        # the figures above, into docs/
+jasperfire figures        # the figure above, into docs/
 jasperfire canopy --lon -118.0989 --lat 52.8466    # LiDAR canopy cover, 2019 vs 2024
 ```
 
@@ -90,4 +88,4 @@ The 24 tests run offline. They cover the index maths, reflectance scaling, cloud
 
 ## Credits
 
-Contains information licensed under the Open Government Licence – Canada (NBAC, CanElevation, Land Cover of Canada), modified Copernicus Sentinel data, and Landsat data from the U.S. Geological Survey.
+Contains information licensed under the Open Government Licence – Canada (NBAC, CanElevation, MRDEM, Land Cover of Canada), modified Copernicus Sentinel data, and Landsat data from the U.S. Geological Survey.
