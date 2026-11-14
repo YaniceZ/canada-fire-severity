@@ -35,6 +35,13 @@ LANDCOVER_2010_URL = (
 # Shaded relief from the 30 m national terrain model, used only as a map background.
 HILLSHADE_URL = "https://canelevation-dem.s3.ca-central-1.amazonaws.com/mrdem-30/mrdem-30-dtm-hillshade.tif"
 
+# The 30 m national terrain model itself, for slope and aspect.
+DEM_URL = "https://canelevation-dem.s3.ca-central-1.amazonaws.com/mrdem-30/mrdem-30-dtm.tif"
+
+# Satellite fire detections for 2024 from the Canadian Wildland Fire Information System.
+# Each record carries the time and the fire weather interpolated to that spot.
+HOTSPOTS_URL = "https://cwfis.cfs.nrcan.gc.ca/downloads/hotspots/archive/2024_hotspots.zip"
+
 # Working grid: UTM zone 11N, the native projection of the Landsat and Sentinel-2 scenes here.
 GRID_CRS = "EPSG:32611"
 

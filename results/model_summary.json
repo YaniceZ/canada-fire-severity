@@ -1,0 +1,271 @@
+{
+  "cells": 13321,
+  "cell_spacing_m": 90,
+  "blocks": 31,
+  "block_size_m": 3000.0,
+  "folds": 5,
+  "targets": {
+    "rbr": {
+      "mean": 0.543,
+      "std": 0.11,
+      "steps": [
+        {
+          "added": "terrain",
+          "features": 4,
+          "block_cv": {
+            "r2": 0.044,
+            "rmse": 0.1079
+          },
+          "random_cv": {
+            "r2": 0.133,
+            "rmse": 0.1028
+          }
+        },
+        {
+          "added": "structure",
+          "features": 7,
+          "block_cv": {
+            "r2": 0.196,
+            "rmse": 0.099
+          },
+          "random_cv": {
+            "r2": 0.27,
+            "rmse": 0.0943
+          }
+        },
+        {
+          "added": "fire weather",
+          "features": 11,
+          "block_cv": {
+            "r2": 0.202,
+            "rmse": 0.0986
+          },
+          "random_cv": {
+            "r2": 0.399,
+            "rmse": 0.0856
+          }
+        },
+        {
+          "added": "decline",
+          "features": 12,
+          "block_cv": {
+            "r2": 0.229,
+            "rmse": 0.0969
+          },
+          "random_cv": {
+            "r2": 0.406,
+            "rmse": 0.085
+          }
+        }
+      ],
+      "decline_gain_r2": {
+        "splits": 10,
+        "mean": 0.022,
+        "min": 0.009,
+        "max": 0.034,
+        "splits_with_a_gain": 10
+      },
+      "permutation_importance": {
+        "ndmi_2013_15": 0.316,
+        "canopy_cover_2019": 0.1142,
+        "elevation_m": 0.0925,
+        "ndmi_change": 0.0765,
+        "slope_deg": 0.0672,
+        "wind_kmh": 0.0465,
+        "canopy_height_2019_m": 0.0339,
+        "burn_hours": 0.0298,
+        "fire_weather_index": 0.0159,
+        "eastness": 0.0111,
+        "northness": 0.0065,
+        "humidity_pct": -0.0005
+      },
+      "partial_dependence_ndmi_change": {
+        "ndmi_change": [
+          -0.2511,
+          -0.2372,
+          -0.2233,
+          -0.2093,
+          -0.1954,
+          -0.1815,
+          -0.1676,
+          -0.1536,
+          -0.1397,
+          -0.1258,
+          -0.1118,
+          -0.0979,
+          -0.084,
+          -0.0701,
+          -0.0561,
+          -0.0422,
+          -0.0283,
+          -0.0144,
+          -0.0004,
+          0.0135,
+          0.0274,
+          0.0413,
+          0.0553,
+          0.0692,
+          0.0831
+        ],
+        "predicted": [
+          -0.0362,
+          -0.0306,
+          -0.0286,
+          -0.0293,
+          -0.0268,
+          -0.0197,
+          -0.017,
+          -0.0129,
+          -0.009,
+          -0.0054,
+          -0.0016,
+          0.0013,
+          0.0035,
+          0.0047,
+          0.0081,
+          0.0061,
+          0.0107,
+          0.0123,
+          0.0093,
+          0.0108,
+          0.0116,
+          0.0111,
+          0.0122,
+          0.0128,
+          0.0127
+        ]
+      }
+    },
+    "height_loss": {
+      "mean": 0.783,
+      "std": 0.203,
+      "steps": [
+        {
+          "added": "terrain",
+          "features": 4,
+          "block_cv": {
+            "r2": 0.005,
+            "rmse": 0.2021
+          },
+          "random_cv": {
+            "r2": 0.155,
+            "rmse": 0.1863
+          }
+        },
+        {
+          "added": "structure",
+          "features": 7,
+          "block_cv": {
+            "r2": 0.136,
+            "rmse": 0.1884
+          },
+          "random_cv": {
+            "r2": 0.244,
+            "rmse": 0.1762
+          }
+        },
+        {
+          "added": "fire weather",
+          "features": 11,
+          "block_cv": {
+            "r2": 0.228,
+            "rmse": 0.178
+          },
+          "random_cv": {
+            "r2": 0.462,
+            "rmse": 0.1486
+          }
+        },
+        {
+          "added": "decline",
+          "features": 12,
+          "block_cv": {
+            "r2": 0.234,
+            "rmse": 0.1774
+          },
+          "random_cv": {
+            "r2": 0.467,
+            "rmse": 0.148
+          }
+        }
+      ],
+      "decline_gain_r2": {
+        "splits": 10,
+        "mean": 0.006,
+        "min": -0.008,
+        "max": 0.017,
+        "splits_with_a_gain": 8
+      },
+      "permutation_importance": {
+        "wind_kmh": 0.161,
+        "burn_hours": 0.1261,
+        "elevation_m": 0.0904,
+        "canopy_height_2019_m": 0.0634,
+        "ndmi_2013_15": 0.0535,
+        "ndmi_change": 0.0367,
+        "fire_weather_index": 0.0348,
+        "slope_deg": 0.0243,
+        "humidity_pct": 0.021,
+        "canopy_cover_2019": 0.0191,
+        "northness": 0.0183,
+        "eastness": 0.0067
+      },
+      "partial_dependence_ndmi_change": {
+        "ndmi_change": [
+          -0.2511,
+          -0.2372,
+          -0.2233,
+          -0.2093,
+          -0.1954,
+          -0.1815,
+          -0.1676,
+          -0.1536,
+          -0.1397,
+          -0.1258,
+          -0.1118,
+          -0.0979,
+          -0.084,
+          -0.0701,
+          -0.0561,
+          -0.0422,
+          -0.0283,
+          -0.0144,
+          -0.0004,
+          0.0135,
+          0.0274,
+          0.0413,
+          0.0553,
+          0.0692,
+          0.0831
+        ],
+        "predicted": [
+          0.0358,
+          0.0305,
+          0.0168,
+          0.0153,
+          0.015,
+          0.0142,
+          0.0138,
+          0.0119,
+          0.0099,
+          0.01,
+          0.0102,
+          0.0051,
+          0.0065,
+          -0.0058,
+          -0.0077,
+          -0.008,
+          -0.0069,
+          -0.0149,
+          -0.0221,
+          -0.0268,
+          -0.0255,
+          -0.0231,
+          -0.0238,
+          -0.0262,
+          -0.0218
+        ]
+      }
+    }
+  }
+}

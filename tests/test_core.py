@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from shapely.geometry import box
 
-from jasperfire import beetle, blocks, canopy, compare, indices, lidar, sources
+from jasperfire import beetle, blocks, canopy, compare, indices, lidar, model, sources
 from jasperfire.perimeter import select_fire
 from jasperfire.scenes import Scene, pick_scenes
 
@@ -224,3 +224,33 @@ def test_relative_loss_skips_low_canopy_and_allows_growth():
     out = canopy.relative_loss(before, after, floor=3.0)
     assert out[:2] == pytest.approx([0.75, -0.2])
     assert np.isnan(out[2])
+
+
+# --- model inputs ----------------------------------------------------------
+
+
+def test_slope_aspect_on_a_plane_that_drops_to_the_south():
+    # Row 0 is the north edge. Elevation falls 10 m per 10 m cell going south: a 45 degree, south-facing slope.
+    dem = np.repeat(np.arange(50, 0, -10, dtype="float32")[:, None], 5, axis=1)
+    slope, northness, eastness = model.slope_aspect(dem, cell=10.0)
+    assert slope[2, 2] == pytest.approx(45.0)
+    assert northness[2, 2] == pytest.approx(-1.0)
+    assert eastness[2, 2] == pytest.approx(0.0, abs=1e-6)
+
+
+def test_slope_aspect_flat_ground_has_no_direction():
+    slope, northness, eastness = model.slope_aspect(np.full((3, 3), 100.0), cell=30.0)
+    assert slope[1, 1] == 0.0 and northness[1, 1] == 0.0 and eastness[1, 1] == 0.0
+
+
+def test_nearest_detection_picks_the_closest_and_flags_far_points():
+    x, y = [0.0, 95.0, 5000.0], [0.0, 0.0, 0.0]
+    index, near = model.nearest_detection(x, y, [0.0, 100.0], [0.0, 0.0], max_distance=1000.0)
+    assert index.tolist() == [0, 1, 1]
+    assert near.tolist() == [True, True, False]
+
+
+def test_feature_groups_are_nested_and_do_not_repeat():
+    sizes = [len(model._features(i)) for i in range(len(model.FEATURE_GROUPS))]
+    assert sizes == sorted(sizes) and len(set(model._features(3))) == sizes[-1]
+    assert model._features(3)[-1] == "ndmi_change"

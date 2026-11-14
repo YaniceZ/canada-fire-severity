@@ -351,8 +351,92 @@ def canopy_figure(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
     return paths
 
 
+GROUP_COLORS = {"terrain": "#8a8a8a", "structure": "#1b7837", "fire weather": "#2166ac", "decline": "#8c510a"}
+FEATURE_LABELS = {
+    "elevation_m": "Elevation",
+    "slope_deg": "Slope",
+    "northness": "Northness",
+    "eastness": "Eastness",
+    "canopy_height_2019_m": "Canopy height 2019",
+    "canopy_cover_2019": "Canopy cover 2019",
+    "ndmi_2013_15": "NDMI 2013–15",
+    "burn_hours": "Time of burning",
+    "wind_kmh": "Wind speed",
+    "humidity_pct": "Relative humidity",
+    "fire_weather_index": "Fire weather index",
+    "ndmi_change": "NDMI change",
+}
+
+
+def model_figure(out_dir: Path, fig_dir: Path) -> list[Path]:
+    """Figure 3: validation scores, predictor importance and the decline effect, one row per target."""
+    plt = _style()
+    from matplotlib.patches import Patch
+
+    from jasperfire import model
+
+    summary = json.loads((out_dir / "model_summary.json").read_text(encoding="utf-8"))
+    group_of = {name: group for group, names in model.FEATURE_GROUPS.items() for name in names}
+    steps = ["Terrain", "+ structure", "+ fire\nweather", "+ decline"]
+
+    fig, axes = plt.subplots(2, 3, figsize=(WIDTH_IN, 4.7), gridspec_kw={"width_ratios": [1, 1.05, 0.95]})
+    fig.subplots_adjust(left=0.075, right=0.985, top=0.93, bottom=0.14, wspace=0.82, hspace=0.62)
+    letters = iter("abcdef")
+    for row, (target, title) in enumerate(model.TARGETS.items()):
+        result = summary["targets"][target]
+        ax_score, ax_importance, ax_effect = axes[row]
+
+        x = range(len(steps))
+        scored = (("random_cv", "Random split", MUTED, (0, (3, 2))), ("block_cv", "Spatial blocks", INK, "-"))
+        for key, label, color, dash in scored:
+            values = [step[key]["r2"] for step in result["steps"]]
+            ax_score.plot(x, values, color=color, linestyle=dash, linewidth=1.2, marker="o", markersize=3)
+            ax_score.annotate(label, (x[-1], values[-1]), xytext=(0, 5), textcoords="offset points", ha="right", color=color)
+        ax_score.set_xticks(x, steps)
+        ax_score.set_ylim(-0.03, 0.6)
+        ax_score.set_ylabel("Cross-validated R²")
+        ax_score.set_title(title, loc="left", pad=3)
+
+        importance = result["permutation_importance"]
+        names = list(importance)[::-1]
+        colors = [GROUP_COLORS[group_of[name]] for name in names]
+        labels, values = [FEATURE_LABELS[name] for name in names], [importance[name] for name in names]
+        ax_importance.barh(labels, values, color=colors, height=0.7)
+        ax_importance.set_xlabel("Drop in held-out R² when shuffled")
+        ax_importance.tick_params(axis="y", length=0)
+        ax_importance.set_title("Predictor importance", loc="left", pad=3)
+
+        curve = result["partial_dependence_ndmi_change"]
+        effect = np.array(curve["predicted"]) - np.mean(curve["predicted"])
+        ax_effect.axhline(0, color=RULE, linewidth=0.5, zorder=0)
+        ax_effect.plot(curve["ndmi_change"], effect, color=GROUP_COLORS["decline"], linewidth=1.4)
+        spread = result["std"]
+        ax_effect.set_ylim(-spread, spread)
+        ax_effect.set_xlabel("NDMI change (negative = decline)", loc="right")
+        ax_effect.set_ylabel("Change in prediction")
+        ax_effect.set_title("Effect of decline alone", loc="left", pad=3)
+        note = "axis spans ±1 s.d.\nof the target"
+        ax_effect.text(0.97, 0.05, note, transform=ax_effect.transAxes, ha="right", color=MUTED, fontsize=6)
+
+        for ax in axes[row]:
+            letter = next(letters)
+            ax.text(-0.02, 1.07, letter, transform=ax.transAxes, fontsize=9, fontweight="bold", ha="right", va="bottom")
+
+    handles = [Patch(facecolor=color, label=group.capitalize()) for group, color in GROUP_COLORS.items()]
+    box = {"handlelength": 1.1, "handleheight": 0.9, "columnspacing": 1.6}
+    fig.legend(handles=handles, loc="lower center", ncol=4, frameon=False, **box)
+
+    paths = [fig_dir / "figure3.png", fig_dir / "figure3.pdf"]
+    for path in paths:
+        fig.savefig(path, dpi=300)
+    plt.close(fig)
+    return paths
+
+
 def run(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
     paths = figure(out_dir, data_dir, fig_dir)
     if (out_dir / "canopy_summary.json").exists():
         paths += canopy_figure(out_dir, data_dir, fig_dir)
+    if (out_dir / "model_summary.json").exists():
+        paths += model_figure(out_dir, fig_dir)
     return paths

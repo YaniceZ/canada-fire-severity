@@ -2,7 +2,7 @@
 
 Burn severity, pre-fire forest decline and canopy loss for the 2024 Jasper wildfire, from Sentinel-2, Landsat and 1 m airborne LiDAR. Everything runs on open data and reads only the part of each file it needs.
 
-**Status: descriptive results done.** Burn severity from Sentinel-2, canopy loss from LiDAR, the pre-fire decline map and their comparison are in place. The modelling in "Next" is not done.
+**Status: analysis done, not validated in the field.** Burn severity from Sentinel-2, canopy loss from LiDAR, the pre-fire decline map, their comparison and a first set of models are in place. The decline map has not been checked against a beetle survey.
 
 ## The question
 
@@ -61,6 +61,27 @@ Three things to keep in mind:
 - Unburned forest next to the fire also shows a median loss of 13% between the surveys, from tree fall, a later survey date and differences in processing. Only 310 ha of it has data from both years, because the 2024 survey was flown over the burned area.
 - The declined stands were the tall ones: median canopy height in 2019 was 15.5 m under strong decline and 9.7 m in stable stands. Decline class and stand structure are tangled together, which is why the next step is a model that includes both.
 
+**5. With terrain, stand structure and fire weather accounted for, decline adds almost nothing.**
+
+![Six panels: validation scores, predictor importance and the effect of decline, for the burn ratio and for LiDAR height loss](docs/figure3.png)
+
+*Top row: relativized burn ratio. Bottom row: LiDAR canopy height loss. (a, d) R² of models that add one group of predictors at a time, scored on a random split and on spatial blocks. (b, e) How much the held-out score drops when one predictor is shuffled. (c, f) How the prediction moves with NDMI change alone; the vertical axis spans one standard deviation of the target either side of zero.*
+
+Gradient-boosted models on 13,321 cells spaced 90 m apart, where both LiDAR surveys and a satellite fire detection within 1 km are available. Scores are from five-fold cross-validation over 31 blocks of 3 km, so every test cell is in a block the model never saw.
+
+| Predictors | Burn ratio, block R² | Height loss, block R² |
+|---|---:|---:|
+| Terrain | 0.04 | 0.01 |
+| + stand structure before the fire | 0.20 | 0.14 |
+| + time of burning and fire weather | 0.20 | 0.23 |
+| + pre-fire decline | 0.23 | 0.23 |
+
+Over ten different block splits, adding decline raised R² by 0.022 on average for the burn ratio (0.009 to 0.034, positive in all ten) and by 0.006 for height loss (-0.008 to 0.017, positive in eight). The effect also points in opposite directions: stronger decline goes with a slightly lower burn ratio and a slightly higher height loss. A stand that had already lost its needles has less green for the satellite to see disappear, and more dead wood to come down, so both small effects are what the measurements would show even if the fire behaved the same.
+
+What did matter: for the burn ratio, how green and dense the stand was before the outbreak; for height loss, the wind and the hour at which the cell burned.
+
+Two cautions. The models explain under a quarter of the variation on land they have not seen, so most of what decided severity is not in these predictors. And scoring on a random split instead gives 0.41 and 0.47, about double, because neighbouring cells leak information between training and test.
+
 ## Run it
 
 ```bash
@@ -70,6 +91,7 @@ jasperfire dnbr           # dNBR, RBR and severity classes as GeoTIFFs in out/
 jasperfire beetle         # yearly Landsat NDMI and the change map (about 8 minutes)
 jasperfire compare        # severity by decline class
 jasperfire canopy-loss    # LiDAR canopy height loss for the whole fire (about 6 minutes)
+jasperfire model          # nested models with spatial block validation (about 4 minutes)
 jasperfire figures        # the figures above, into docs/
 jasperfire canopy --lon -118.0989 --lat 52.8466    # LiDAR canopy cover in one 500 m window
 ```
@@ -87,6 +109,8 @@ Every step reads only the window it needs from cloud-hosted files. Nothing large
 | Pre-fire decline | Landsat 8/9 Collection 2 Level-2 on the Planetary Computer, 2013–2023 | 30 m | yes |
 | Conifer mask | Land Cover of Canada, 2010 edition | 30 m | yes |
 | Earlier fires | National Burned Area Composite, 2013–2023 (4.6 ha inside the perimeter) | vector | yes |
+| Terrain | MRDEM 30 m terrain model (CanElevation) | 30 m | yes |
+| Fire detections | CWFIS hotspots 2024 (VIIRS), with interpolated fire weather | 375 m | yes |
 | Beetle survey | No open spatial layer found for inside the park | – | no |
 
 Alberta publishes its beetle aerial surveys for provincial land, not for the national park, so the decline map here stands in for a survey layer. Checking it against Parks Canada's own survey data is still to do.
@@ -95,10 +119,10 @@ No open sub-metre imagery of this fire was found. Maxar's open data programme re
 
 ## Next
 
-1. Build a pixel table with slope, aspect, elevation and 2019 canopy height, and model severity with spatial block cross-validation (`jasperfire.blocks`), so the test areas are not next to the training areas. This is what can separate beetle decline from stand structure.
-2. Estimate the day each stand burned from active-fire detections and add that day's weather.
-3. Ask Parks Canada for the beetle survey polygons and check the decline map against them.
-4. Follow early regrowth with the 2025 LiDAR and the 2025–2026 imagery.
+1. Ask Parks Canada for the beetle survey polygons and check the decline map against them.
+2. Look at rate of spread instead of severity: the fire detections give arrival times, and dead pine may have mattered more for how fast the fire moved than for how hard it burned.
+3. Follow early regrowth with the 2025 LiDAR and the 2025–2026 imagery.
+4. Repeat on a second fire with beetle history to see whether the result holds.
 
 ## Tests
 
@@ -107,8 +131,8 @@ ruff check .
 pytest -q
 ```
 
-The 27 tests run offline. They cover the index maths, reflectance scaling, cloud masking, yearly compositing, scene choice, canopy height and cover per cell, the block split and the comparison table.
+The 31 tests run offline. They cover the index maths, reflectance scaling, cloud masking, yearly compositing, scene choice, canopy height and cover per cell, slope and aspect, matching cells to fire detections, the block split and the comparison table.
 
 ## Credits
 
-Contains information licensed under the Open Government Licence – Canada (NBAC, CanElevation, MRDEM, Land Cover of Canada), modified Copernicus Sentinel data, and Landsat data from the U.S. Geological Survey.
+Contains information licensed under the Open Government Licence – Canada (NBAC, CWFIS hotspots, CanElevation, MRDEM, Land Cover of Canada), modified Copernicus Sentinel data, and Landsat data from the U.S. Geological Survey.
