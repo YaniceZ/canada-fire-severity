@@ -42,6 +42,11 @@ DEM_URL = "https://canelevation-dem.s3.ca-central-1.amazonaws.com/mrdem-30/mrdem
 # Each record carries the time and the fire weather interpolated to that spot.
 HOTSPOTS_URL = "https://cwfis.cfs.nrcan.gc.ca/downloads/hotspots/archive/2024_hotspots.zip"
 
+# AlphaEarth Foundations annual embeddings, free copy on Source Cooperative (CC-BY 4.0).
+AEF_INDEX_URL = "https://data.source.coop/tge-labs/aef/v1/annual/aef_index.gpkg"
+AEF_S3_PREFIX = "s3://us-west-2.opendata.source.coop/"
+AEF_HTTPS_PREFIX = "https://data.source.coop/"
+
 # Working grid: UTM zone 11N, the native projection of the Landsat and Sentinel-2 scenes here.
 GRID_CRS = "EPSG:32611"
 

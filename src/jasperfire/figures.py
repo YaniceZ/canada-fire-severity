@@ -433,10 +433,62 @@ def model_figure(out_dir: Path, fig_dir: Path) -> list[Path]:
     return paths
 
 
+def embedding_figure(out_dir: Path, fig_dir: Path) -> list[Path]:
+    """Figure 4: hand-made predictors and the burn ratio against AlphaEarth embeddings."""
+    plt = _style()
+
+    summary = json.loads((out_dir / "embedding_summary.json").read_text(encoding="utf-8"))
+    forecast = summary["forecast_severity_from_pre_fire_state"]
+    panels = (
+        ("Forecast burn ratio from pre-fire state", forecast["rbr"], ("hand-made", "embedding", "both")),
+        ("Forecast LiDAR height loss from pre-fire state", forecast["height_loss"], ("hand-made", "embedding", "both")),
+        (
+            "Match LiDAR height loss after the fire",
+            summary["match_lidar_height_loss_after_fire"],
+            ("burn ratio", "embedding change", "both"),
+        ),
+    )
+    labels = {
+        "hand-made": "Hand-made predictors",
+        "embedding": "AlphaEarth embedding",
+        "embedding change": "AlphaEarth, before and after",
+        "burn ratio": "Burn ratio (RBR)",
+        "both": "Both together",
+    }
+    colors = {"hand-made": "#8a8a8a", "burn ratio": "#8a8a8a", "embedding": "#2166ac", "embedding change": "#2166ac"}
+
+    fig, axes = plt.subplots(3, 1, figsize=(WIDTH_IN * 0.62, 4.3), sharex=True)
+    fig.subplots_adjust(left=0.36, right=0.95, top=0.93, bottom=0.11, hspace=0.55)
+    for ax, letter, (title, scores, order) in zip(axes, "abc", panels, strict=True):
+        for i, key in enumerate(order):
+            score = scores[key]
+            ax.barh(i, score["r2"], color=colors.get(key, INK), height=0.62)
+            ax.plot([score["min"], score["max"]], [i, i], color="white", linewidth=2.2, solid_capstyle="butt")
+            ax.plot([score["min"], score["max"]], [i, i], color=INK, linewidth=0.9, solid_capstyle="butt")
+            ax.text(score["max"] + 0.015, i, f"{score['r2']:.2f}", va="center")
+        ax.set_yticks(range(len(order)), [labels[key] for key in order])
+        ax.invert_yaxis()
+        ax.tick_params(axis="y", length=0)
+        ax.set_xlim(0, 1)
+        ax.grid(axis="x", color=RULE, linewidth=0.5)
+        ax.set_axisbelow(True)
+        ax.set_title(title, loc="left", pad=3)
+        ax.text(-0.57, 1.06, letter, transform=ax.transAxes, fontsize=9, fontweight="bold", va="bottom")
+    axes[-1].set_xlabel("R² on held-out 3 km blocks (line: range over block splits)")
+
+    paths = [fig_dir / "figure4.png", fig_dir / "figure4.pdf"]
+    for path in paths:
+        fig.savefig(path, dpi=300)
+    plt.close(fig)
+    return paths
+
+
 def run(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
     paths = figure(out_dir, data_dir, fig_dir)
     if (out_dir / "canopy_summary.json").exists():
         paths += canopy_figure(out_dir, data_dir, fig_dir)
     if (out_dir / "model_summary.json").exists():
         paths += model_figure(out_dir, fig_dir)
+    if (out_dir / "embedding_summary.json").exists():
+        paths += embedding_figure(out_dir, fig_dir)
     return paths

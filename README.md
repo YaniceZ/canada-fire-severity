@@ -82,6 +82,28 @@ What did matter: for the burn ratio, how green and dense the stand was before th
 
 Two cautions. The models explain under a quarter of the variation on land they have not seen, so most of what decided severity is not in these predictors. And scoring on a random split instead gives 0.41 and 0.47, about double, because neighbouring cells leak information between training and test.
 
+**6. A geospatial foundation model describes the stands a little better, and sees the fire much better.**
+
+![Three bar charts comparing hand-made predictors and the burn ratio with AlphaEarth embeddings](docs/figure4.png)
+
+*R² on held-out 3 km blocks, averaged over three block splits; the line on each bar is the range. (a, b) Forecasting severity from what was known before the fire. (c) Matching the LiDAR canopy height loss from satellite data alone.*
+
+[AlphaEarth Foundations](https://developers.google.com/earth-engine/guides/aef_on_gcs_readme) summarises a year of satellite observations at every 10 m pixel as 64 numbers. I swapped those numbers in for the predictors built by hand in this project, keeping the cells, the model and the blocks the same.
+
+| Task | Hand-made or classic | AlphaEarth | Both |
+|---|---:|---:|---:|
+| Forecast burn ratio from pre-fire state | 0.20 | 0.25 | 0.27 |
+| Forecast LiDAR height loss from pre-fire state | 0.17 | 0.21 | 0.23 |
+| Match LiDAR height loss after the fire | 0.59 (burn ratio) | 0.78 | 0.87 |
+
+For forecasting, the 2023 embedding beats terrain, LiDAR structure and NDMI together by about 0.04, and the ranges over block splits overlap for height loss, so that is a small edge. It did not need a LiDAR flight to get there. No set of predictors forecasts more than about a quarter of the variation.
+
+For seeing what the fire did, the difference is large. The burn ratio alone explains 59% of the variation in LiDAR height loss; the 2023 and 2024 embeddings explain 78%, and both together 87%. The embeddings draw on radar and a full year of optical data, not one image pair, which is the likely reason.
+
+The 2023 embedding also recovers the Landsat NDMI decline with an R² of 0.78, so it already carries the information the decline map was built to capture.
+
+Caveats: this is one fire and three block splits. The 2024 embedding mixes months before and after the fire. And the LiDAR height loss it is scored against has its own weakness with thin burned stems, described above.
+
 ## Run it
 
 ```bash
@@ -92,6 +114,7 @@ jasperfire beetle         # yearly Landsat NDMI and the change map (about 8 minu
 jasperfire compare        # severity by decline class
 jasperfire canopy-loss    # LiDAR canopy height loss for the whole fire (about 6 minutes)
 jasperfire model          # nested models with spatial block validation (about 4 minutes)
+jasperfire embeddings     # hand-made predictors against AlphaEarth embeddings (about 4 minutes)
 jasperfire figures        # the figures above, into docs/
 jasperfire canopy --lon -118.0989 --lat 52.8466    # LiDAR canopy cover in one 500 m window
 ```
@@ -111,6 +134,7 @@ Every step reads only the window it needs from cloud-hosted files. Nothing large
 | Earlier fires | National Burned Area Composite, 2013–2023 (4.6 ha inside the perimeter) | vector | yes |
 | Terrain | MRDEM 30 m terrain model (CanElevation) | 30 m | yes |
 | Fire detections | CWFIS hotspots 2024 (VIIRS), with interpolated fire weather | 375 m | yes |
+| Foundation model embeddings | AlphaEarth Foundations Satellite Embedding, 2023 and 2024, Source Cooperative copy | 10 m | yes |
 | Beetle survey | No open spatial layer found for inside the park | – | no |
 
 Alberta publishes its beetle aerial surveys for provincial land, not for the national park, so the decline map here stands in for a survey layer. Checking it against Parks Canada's own survey data is still to do.
@@ -120,7 +144,7 @@ No open sub-metre imagery of this fire was found. Maxar's open data programme re
 ## Next
 
 1. Ask Parks Canada for the beetle survey polygons and check the decline map against them.
-2. Look at rate of spread instead of severity: the fire detections give arrival times, and dead pine may have mattered more for how fast the fire moved than for how hard it burned.
+2. Look at rate of spread instead of severity. That cannot be done here: satellites caught this fire at only four times over two days and then lost it under cloud. It needs a fire with a long, well-observed progression.
 3. Follow early regrowth with the 2025 LiDAR and the 2025–2026 imagery.
 4. Repeat on a second fire with beetle history to see whether the result holds.
 
@@ -131,8 +155,8 @@ ruff check .
 pytest -q
 ```
 
-The 31 tests run offline. They cover the index maths, reflectance scaling, cloud masking, yearly compositing, scene choice, canopy height and cover per cell, slope and aspect, matching cells to fire detections, the block split and the comparison table.
+The 33 tests run offline. They cover the index maths, reflectance scaling, cloud masking, yearly compositing, scene choice, canopy height and cover per cell, slope and aspect, matching cells to fire detections, the block split and the comparison table.
 
 ## Credits
 
-Contains information licensed under the Open Government Licence – Canada (NBAC, CWFIS hotspots, CanElevation, MRDEM, Land Cover of Canada), modified Copernicus Sentinel data, and Landsat data from the U.S. Geological Survey.
+Contains information licensed under the Open Government Licence – Canada (NBAC, CWFIS hotspots, CanElevation, MRDEM, Land Cover of Canada), modified Copernicus Sentinel data, and Landsat data from the U.S. Geological Survey. The AlphaEarth Foundations Satellite Embedding dataset is produced by Google and Google DeepMind.

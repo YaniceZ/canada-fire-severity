@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from shapely.geometry import box
 
-from jasperfire import beetle, blocks, canopy, compare, indices, lidar, model, sources
+from jasperfire import beetle, blocks, canopy, compare, embeddings, indices, lidar, model, sources
 from jasperfire.perimeter import select_fire
 from jasperfire.scenes import Scene, pick_scenes
 
@@ -254,3 +254,20 @@ def test_feature_groups_are_nested_and_do_not_repeat():
     sizes = [len(model._features(i)) for i in range(len(model.FEATURE_GROUPS))]
     assert sizes == sorted(sizes) and len(set(model._features(3))) == sizes[-1]
     assert model._features(3)[-1] == "ndmi_change"
+
+
+# --- embeddings ------------------------------------------------------------
+
+
+def test_dequantize_follows_the_published_formula_and_masks_nodata():
+    stored = np.array([127, -127, 0, 64, -128], dtype="int8")
+    out = embeddings.dequantize(stored)
+    assert out[:3] == pytest.approx([(127 / 127.5) ** 2, -((127 / 127.5) ** 2), 0.0])
+    assert out[3] == pytest.approx((64 / 127.5) ** 2)
+    assert np.isnan(out[4])
+
+
+def test_dequantize_keeps_the_sign_and_the_range():
+    out = embeddings.dequantize(np.arange(-127, 128, dtype="int16").astype("int8"))
+    assert out.min() >= -1 and out.max() <= 1
+    assert (np.sign(out) == np.sign(np.arange(-127, 128))).all()

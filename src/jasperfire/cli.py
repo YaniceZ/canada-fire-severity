@@ -7,7 +7,7 @@ import json
 from datetime import date, timedelta
 from pathlib import Path
 
-from jasperfire import beetle, burn, canopy, compare, figures, lidar, model, perimeter, scenes, sources
+from jasperfire import beetle, burn, canopy, compare, embeddings, figures, lidar, model, perimeter, scenes, sources
 
 
 def _pick(fire):
@@ -68,6 +68,13 @@ def cmd_model(args) -> None:
     print(json.dumps(model.fit(table, args.out), indent=2))
 
 
+def cmd_embeddings(args) -> None:
+    import pandas as pd
+
+    table = pd.read_csv(args.out / "pixel_table.csv.gz")
+    print(json.dumps(embeddings.run(table, args.out), indent=2))
+
+
 def cmd_canopy(args) -> None:
     """Canopy cover before and after the fire in one square window."""
     import geopandas as gpd
@@ -95,6 +102,9 @@ def main(argv: list[str] | None = None) -> None:
     loss = sub.add_parser("canopy-loss", help="LiDAR canopy height and cover loss, 2019 to 2024, for the whole fire")
     loss.set_defaults(func=cmd_canopy_loss)
     sub.add_parser("model", help="nested severity models with spatial block validation").set_defaults(func=cmd_model)
+    sub.add_parser("embeddings", help="hand-made predictors against AlphaEarth embeddings").set_defaults(
+        func=cmd_embeddings
+    )
     window = sub.add_parser("canopy", help="LiDAR canopy cover in a window, per survey year")
     window.add_argument("--lon", type=float, required=True)
     window.add_argument("--lat", type=float, required=True)
