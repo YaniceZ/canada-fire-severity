@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "jasper-fire-severity"
+name = "canada-fire-severity"
 version = "0.1.0"
-description = "Burn severity and canopy loss for the 2024 Jasper wildfire from Sentinel-2 and 1 m airborne LiDAR, using open Canadian data."
+description = "Burn severity, pre-fire forest decline, LiDAR canopy loss and AlphaEarth embeddings for Canadian wildfires, from open data."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -23,7 +23,7 @@ dependencies = [
 dev = ["pytest>=8", "ruff>=0.5"]
 
 [project.scripts]
-jasperfire = "jasperfire.cli:main"
+firesev = "firesev.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

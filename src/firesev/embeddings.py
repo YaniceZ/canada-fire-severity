@@ -17,8 +17,8 @@ from pathlib import Path
 
 import numpy as np
 
-from jasperfire import beetle, blocks, model, sources
-from jasperfire.fires import Fire
+from firesev import beetle, blocks, model, sources
+from firesev.fires import Fire
 
 NODATA = -128
 SEEDS = 3  # block splits per comparison

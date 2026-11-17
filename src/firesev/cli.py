@@ -1,4 +1,4 @@
-"""Command line entry point: `jasperfire <step>`."""
+"""Command line entry point: `firesev <step>`."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import json
 from datetime import date, timedelta
 from pathlib import Path
 
-from jasperfire import beetle, burn, canopy, compare, embeddings, figures, fires, lidar, model, perimeter, scenes, sources
+from firesev import beetle, burn, canopy, compare, embeddings, figures, fires, lidar, model, perimeter, scenes, sources
 
 
 def _pick(fire, outline):
@@ -91,7 +91,7 @@ def cmd_canopy(args) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(prog="jasperfire", description=__doc__)
+    parser = argparse.ArgumentParser(prog="firesev", description=__doc__)
     parser.add_argument("--fire", default="jasper", choices=sorted(fires.FIRES), help="which fire to work on")
     parser.add_argument("--data", type=Path, help="download cache (default: data/<fire>)")
     parser.add_argument("--out", type=Path, help="results folder (default: out/<fire>)")

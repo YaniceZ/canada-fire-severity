@@ -8,7 +8,7 @@ from pathlib import Path
 
 import geopandas as gpd
 
-from jasperfire.fires import Fire
+from firesev.fires import Fire
 
 
 def download_nbac(dest: Path, url: str) -> Path:
@@ -18,7 +18,7 @@ def download_nbac(dest: Path, url: str) -> Path:
     if existing:
         return existing[0]
     zip_path = dest / "nbac.zip"
-    request = urllib.request.Request(url, headers={"User-Agent": "jasperfire"})
+    request = urllib.request.Request(url, headers={"User-Agent": "firesev"})
     with urllib.request.urlopen(request, timeout=300) as response, open(zip_path, "wb") as f:
         while chunk := response.read(1 << 20):
             f.write(chunk)

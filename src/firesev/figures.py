@@ -12,8 +12,8 @@ from pathlib import Path
 
 import numpy as np
 
-from jasperfire import beetle
-from jasperfire.fires import Fire
+from firesev import beetle
+from firesev.fires import Fire
 
 INK, MUTED, RULE = "#1a1a1a", "#555555", "#d9d9d9"
 # Sequential yellow-orange-red-brown for the five ordered severity classes.
@@ -153,8 +153,8 @@ def figure(fire: Fire, out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Pat
     from matplotlib.colors import BoundaryNorm, ListedColormap, TwoSlopeNorm
     from matplotlib.patches import Patch
 
-    from jasperfire import indices
-    from jasperfire.perimeter import load_perimeter
+    from firesev import indices
+    from firesev.perimeter import load_perimeter
 
     data = _layers(fire, out_dir)
     grid = data["grid"]
@@ -289,8 +289,8 @@ def canopy_figure(fire: Fire, out_dir: Path, data_dir: Path, fig_dir: Path) -> l
     plt = _style()
     from rasterio.features import geometry_mask
 
-    from jasperfire import canopy, indices
-    from jasperfire.perimeter import load_perimeter
+    from firesev import canopy, indices
+    from firesev.perimeter import load_perimeter
 
     data = _layers(fire, out_dir)
     grid = data["grid"]
@@ -385,7 +385,7 @@ def model_figure(out_dir: Path, fig_dir: Path) -> list[Path]:
     plt = _style()
     from matplotlib.patches import Patch
 
-    from jasperfire import model
+    from firesev import model
 
     summary = json.loads((out_dir / "model_summary.json").read_text(encoding="utf-8"))
     group_of = {name: group for group, names in model.FEATURE_GROUPS.items() for name in names}

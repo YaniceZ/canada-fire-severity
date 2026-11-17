@@ -17,9 +17,9 @@ from pathlib import Path
 
 import numpy as np
 
-from jasperfire import beetle, compare, indices, sources
-from jasperfire.fires import Fire
-from jasperfire.lidar import canopy_height
+from firesev import beetle, compare, indices, sources
+from firesev.fires import Fire
+from firesev.lidar import canopy_height
 
 CELL = 30  # metres; output cell, a whole number of 1 m LiDAR pixels
 TILE = 2400  # metres; a whole number of cells

@@ -8,8 +8,8 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 
-from jasperfire import indices
-from jasperfire.scenes import Scene
+from firesev import indices
+from firesev.scenes import Scene
 
 # Earth Search asset names for the 20 m bands used here.
 NIR, SWIR, SCL = "nir08", "swir22", "scl"

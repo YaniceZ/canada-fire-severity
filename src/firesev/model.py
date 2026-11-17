@@ -22,8 +22,8 @@ from pathlib import Path
 
 import numpy as np
 
-from jasperfire import beetle, blocks, canopy
-from jasperfire.fires import Fire
+from firesev import beetle, blocks, canopy
+from firesev.fires import Fire
 
 FEATURE_GROUPS = {
     "terrain": ("elevation_m", "slope_deg", "northness", "eastness"),
@@ -75,7 +75,7 @@ def load_hotspots(fire: Fire, data_dir: Path, bbox: tuple[float, float, float, f
     csv = folder / member
     if not csv.exists():
         zip_path = folder / "hotspots.zip"
-        request = urllib.request.Request(fire.hotspots_url, headers={"User-Agent": "jasperfire"})
+        request = urllib.request.Request(fire.hotspots_url, headers={"User-Agent": "firesev"})
         with urllib.request.urlopen(request, timeout=600) as response, open(zip_path, "wb") as f:
             while chunk := response.read(1 << 20):
                 f.write(chunk)

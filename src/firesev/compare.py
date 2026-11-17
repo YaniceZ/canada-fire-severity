@@ -12,7 +12,7 @@ from pathlib import Path
 
 import numpy as np
 
-from jasperfire import beetle, indices
+from firesev import beetle, indices
 
 
 def ranks(values: np.ndarray) -> np.ndarray:

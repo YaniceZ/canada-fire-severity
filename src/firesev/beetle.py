@@ -22,8 +22,8 @@ from pathlib import Path
 
 import numpy as np
 
-from jasperfire import sources
-from jasperfire.fires import Fire
+from firesev import sources
+from firesev.fires import Fire
 
 # Landsat Collection 2 QA_PIXEL bits that mark a pixel as unusable:
 # 0 fill, 1 dilated cloud, 2 cirrus, 3 cloud, 4 cloud shadow, 5 snow, 7 water.
@@ -219,7 +219,7 @@ def earlier_fire_mask(data_dir: Path, grid: Grid, years: tuple[int, ...]) -> np.
     from rasterio.features import rasterize
     from shapely.geometry import box
 
-    from jasperfire.perimeter import download_nbac
+    from firesev.perimeter import download_nbac
 
     area = box(*grid.bounds)
     shapes = []

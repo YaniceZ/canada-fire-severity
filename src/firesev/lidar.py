@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from jasperfire import sources
+from firesev import sources
 
 
 def canopy_height(dsm: np.ndarray, dtm: np.ndarray, nodata: float | None = None) -> np.ndarray:

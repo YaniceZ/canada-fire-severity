@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from jasperfire import sources
+from firesev import sources
 
 
 @dataclass(frozen=True)

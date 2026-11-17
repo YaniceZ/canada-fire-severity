@@ -7,9 +7,9 @@ import numpy as np
 import pytest
 from shapely.geometry import box
 
-from jasperfire import beetle, blocks, canopy, compare, embeddings, fires, indices, lidar, model, sources
-from jasperfire.perimeter import select_fire
-from jasperfire.scenes import Scene, pick_scenes
+from firesev import beetle, blocks, canopy, compare, embeddings, fires, indices, lidar, model, sources
+from firesev.perimeter import select_fire
+from firesev.scenes import Scene, pick_scenes
 
 # --- indices ---------------------------------------------------------------
 

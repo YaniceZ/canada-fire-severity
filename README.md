@@ -1,4 +1,4 @@
-# jasper-fire-severity
+# canada-fire-severity
 
 Burn severity, pre-fire forest decline and canopy loss for two Canadian wildfires: Jasper 2024, and McDougall Creek 2023 in West Kelowna. Sentinel-2, Landsat, 1 m airborne LiDAR and AlphaEarth embeddings, all open data, read only where they are needed. The same code runs on both fires; what is specific to each one is a single entry in `fires.py`.
 
@@ -146,18 +146,18 @@ Two fires are still two cases. McDougall Creek had too little decline to be a st
 ```bash
 pip install -e ".[dev]"
 # every step takes --fire jasper (the default) or --fire mcdougall
-jasperfire perimeter      # fire perimeter from the National Burned Area Composite
-jasperfire dnbr           # dNBR, RBR and severity classes as GeoTIFFs in out/jasper/
-jasperfire beetle         # yearly Landsat NDMI and the change map (about 8 minutes)
-jasperfire compare        # severity by decline class
-jasperfire canopy-loss    # LiDAR canopy height loss for the whole fire (about 6 minutes)
-jasperfire model          # nested models with spatial block validation (about 4 minutes)
-jasperfire embeddings     # hand-made predictors against AlphaEarth embeddings (about 4 minutes)
-jasperfire figures        # the figures above, into docs/jasper/
-jasperfire canopy --lon -118.0989 --lat 52.8466    # LiDAR canopy cover in one 500 m window
+firesev perimeter      # fire perimeter from the National Burned Area Composite
+firesev dnbr           # dNBR, RBR and severity classes as GeoTIFFs in out/jasper/
+firesev beetle         # yearly Landsat NDMI and the change map (about 8 minutes)
+firesev compare        # severity by decline class
+firesev canopy-loss    # LiDAR canopy height loss for the whole fire (about 6 minutes)
+firesev model          # nested models with spatial block validation (about 4 minutes)
+firesev embeddings     # hand-made predictors against AlphaEarth embeddings (about 4 minutes)
+firesev figures        # the figures above, into docs/jasper/
+firesev canopy --lon -118.0989 --lat 52.8466    # LiDAR canopy cover in one 500 m window
 ```
 
-What is specific to one fire (dates, perimeter, land cover, terrain, the years compared) lives in `src/jasperfire/fires.py`, and every step takes `--fire <key>`. Jasper is the only entry so far.
+What is specific to one fire (dates, perimeter, land cover, terrain, the years compared) lives in `src/firesev/fires.py`, and every step takes `--fire <key>`. Jasper is the only entry so far.
 
 Every step reads only the window it needs from cloud-hosted files. Nothing large is stored apart from the burned-area shapefiles, though `canopy-loss` streams several gigabytes of LiDAR.
 
