@@ -4,6 +4,28 @@
   "blocks": 31,
   "block_size_m": 3000.0,
   "folds": 5,
+  "feature_groups": {
+    "terrain": [
+      "elevation_m",
+      "slope_deg",
+      "northness",
+      "eastness"
+    ],
+    "structure": [
+      "canopy_height_2019_m",
+      "canopy_cover_2019",
+      "ndmi_2013_15"
+    ],
+    "fire weather": [
+      "burn_hours",
+      "wind_kmh",
+      "humidity_pct",
+      "fire_weather_index"
+    ],
+    "decline": [
+      "ndmi_change"
+    ]
+  },
   "targets": {
     "rbr": {
       "mean": 0.543,
@@ -71,10 +93,10 @@
         "elevation_m": 0.0925,
         "ndmi_change": 0.0765,
         "slope_deg": 0.0672,
-        "wind_kmh": 0.0465,
+        "wind_kmh": 0.0466,
         "canopy_height_2019_m": 0.0339,
-        "burn_hours": 0.0298,
-        "fire_weather_index": 0.0159,
+        "burn_hours": 0.0294,
+        "fire_weather_index": 0.0162,
         "eastness": 0.0111,
         "northness": 0.0065,
         "humidity_pct": -0.0005
@@ -197,7 +219,7 @@
         "splits_with_a_gain": 8
       },
       "permutation_importance": {
-        "wind_kmh": 0.161,
+        "wind_kmh": 0.1605,
         "burn_hours": 0.1261,
         "elevation_m": 0.0904,
         "canopy_height_2019_m": 0.0634,
@@ -207,7 +229,7 @@
         "slope_deg": 0.0243,
         "humidity_pct": 0.021,
         "canopy_cover_2019": 0.0191,
-        "northness": 0.0183,
+        "northness": 0.0182,
         "eastness": 0.0067
       },
       "partial_dependence_ndmi_change": {

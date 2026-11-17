@@ -50,6 +50,8 @@ def cmd_figures(args) -> None:
 
 
 def cmd_canopy_loss(args) -> None:
+    if not args.fire.lidar_change:
+        raise SystemExit(f"{args.fire.name} has no LiDAR from both before and after the fire")
     outline = perimeter.load_perimeter(args.fire, args.data)
     if not (args.out / "canopy_30m.tif").exists():
         canopy.build(outline, args.out)
@@ -100,7 +102,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("beetle", help="map pre-fire conifer decline from Landsat NDMI").set_defaults(func=cmd_beetle)
     sub.add_parser("compare", help="burn severity by pre-fire decline class").set_defaults(func=cmd_compare)
     sub.add_parser("figures", help="draw the README figure into docs/").set_defaults(func=cmd_figures)
-    loss = sub.add_parser("canopy-loss", help="LiDAR canopy height and cover loss, 2019 to 2024, for the whole fire")
+    loss = sub.add_parser("canopy-loss", help="LiDAR canopy height and cover loss for the whole fire (Jasper only)")
     loss.set_defaults(func=cmd_canopy_loss)
     sub.add_parser("model", help="nested severity models with spatial block validation").set_defaults(func=cmd_model)
     sub.add_parser("embeddings", help="hand-made predictors against AlphaEarth embeddings").set_defaults(

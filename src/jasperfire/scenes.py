@@ -42,7 +42,23 @@ def pick_scenes(
     def by_cloud(s: Scene) -> tuple[float, str]:
         return (s.cloud, s.id)
 
-    return min(pre, key=by_cloud), min(post, key=by_cloud)
+    # Where a fire sits in the overlap of two tiles, both scenes must come from the same
+    # tile, or the two images would be on different grids. Take the tile whose pair is clearest.
+    pairs = []
+    for name in sorted({tile(s) for s in pre} & {tile(s) for s in post}):
+        best_pre = min((s for s in pre if tile(s) == name), key=by_cloud)
+        best_post = min((s for s in post if tile(s) == name), key=by_cloud)
+        pairs.append((max(best_pre.cloud, best_post.cloud), name, best_pre, best_post))
+    if not pairs:
+        raise ValueError("no Sentinel-2 tile has a clear scene both before and after the fire")
+    _, _, best_pre, best_post = min(pairs, key=lambda pair: pair[:2])
+    return best_pre, best_post
+
+
+def tile(scene: Scene) -> str:
+    """Sentinel-2 tile code from a scene id such as S2B_11UMU_20240707_0_L2A."""
+    parts = scene.id.split("_")
+    return parts[1] if len(parts) > 1 else scene.id
 
 
 def search(bbox: tuple[float, float, float, float], start: date, end: date) -> list[Scene]:

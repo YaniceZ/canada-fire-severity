@@ -199,7 +199,9 @@ def figure(fire: Fire, out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Pat
     )
 
     # (b) NDMI change
-    _base_map(ax_b, data, perimeter, "b", "Conifer NDMI change, 2013–15 to 2021–23")
+    b0, b1 = fire.decline_baseline[0], fire.decline_baseline[-1]
+    r0, r1 = fire.decline_recent[0], fire.decline_recent[-1]
+    _base_map(ax_b, data, perimeter, "b", f"Conifer NDMI change, {b0}–{b1 % 100:02d} to {r0}–{r1 % 100:02d}")
     shown = np.ma.masked_where(~data["study"], data["change"])
     norm = TwoSlopeNorm(0, -0.25, 0.25)
     image = ax_b.imshow(shown, extent=extent, cmap="BrBG", norm=norm, interpolation="nearest", alpha=0.9, zorder=2)
@@ -214,11 +216,19 @@ def figure(fire: Fire, out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Pat
     years = data["years"]
     for period in (fire.decline_baseline, fire.decline_recent):
         ax_c.axvspan(period[0] - 0.4, period[-1] + 0.4, color="#f0f0f0", linewidth=0, zorder=0)
+    ends = []
     for index, color in enumerate(DECLINE_COLORS):
         series = [float(np.nanmean(band[groups == index])) for band in data["annual"]]
         ax_c.plot(years, series, color=color, linewidth=1.2, marker="o", markersize=2.6, markeredgewidth=0, zorder=3)
-        end = (years[-1], series[-1])
-        ax_c.annotate(DECLINE_SHORT[index], end, xytext=(4, 0), textcoords="offset points", va="center")
+        ends.append((series[-1], DECLINE_SHORT[index]))
+    # Spread the end labels so that lines finishing close together do not print on top of each other.
+    bottom, top = ax_c.get_ylim()
+    gap = 0.075 * (top - bottom)
+    placed: list[float] = []
+    for value, label in sorted(ends):
+        y = value if not placed else max(value, placed[-1] + gap)
+        placed.append(y)
+        ax_c.annotate(label, (years[-1], value), xytext=(years[-1] + 0.35, y), textcoords="data", va="center")
     low = ax_c.get_ylim()[0]
     ax_c.text(fire.decline_baseline[1], low, "baseline", ha="center", va="bottom", color=MUTED, fontsize=6)
     ax_c.text(fire.decline_recent[1] - 0.6, low, "recent", ha="center", va="bottom", color=MUTED, fontsize=6)
@@ -381,10 +391,14 @@ def model_figure(out_dir: Path, fig_dir: Path) -> list[Path]:
     group_of = {name: group for group, names in model.FEATURE_GROUPS.items() for name in names}
     steps = ["Terrain", "+ structure", "+ fire\nweather", "+ decline"]
 
-    fig, axes = plt.subplots(2, 3, figsize=(WIDTH_IN, 4.7), gridspec_kw={"width_ratios": [1, 1.05, 0.95]})
-    fig.subplots_adjust(left=0.075, right=0.985, top=0.93, bottom=0.14, wspace=0.82, hspace=0.62)
+    rows = len(summary["targets"])
+    widths = {"width_ratios": [1, 1.05, 0.95]}
+    height = 0.85 + 2.2 * rows
+    fig, axes = plt.subplots(rows, 3, figsize=(WIDTH_IN, height), gridspec_kw=widths, squeeze=False)
+    fig.subplots_adjust(left=0.075, right=0.985, top=1 - 0.32 / height, bottom=0.68 / height, wspace=0.82, hspace=0.62)
     letters = iter("abcdef")
-    for row, (target, title) in enumerate(model.TARGETS.items()):
+    for row, target in enumerate(summary["targets"]):
+        title = model.TARGETS[target]
         result = summary["targets"][target]
         ax_score, ax_importance, ax_effect = axes[row]
 
@@ -393,7 +407,18 @@ def model_figure(out_dir: Path, fig_dir: Path) -> list[Path]:
         for key, label, color, dash in scored:
             values = [step[key]["r2"] for step in result["steps"]]
             ax_score.plot(x, values, color=color, linestyle=dash, linewidth=1.2, marker="o", markersize=3)
-            ax_score.annotate(label, (x[-1], values[-1]), xytext=(0, 5), textcoords="offset points", ha="right", color=color)
+            below = key == "random_cv"  # the random-split line is the higher one; label it underneath, clear of the title
+            offset, align = ((0, -6), "top") if below else ((0, 5), "bottom")
+            ax_score.annotate(
+                label,
+                (x[-1], values[-1]),
+                xytext=offset,
+                textcoords="offset points",
+                ha="right",
+                va=align,
+                color=color,
+                path_effects=[_stroke(2.0)],
+            )
         ax_score.set_xticks(x, steps)
         ax_score.set_ylim(-0.03, 0.6)
         ax_score.set_ylabel("Cross-validated R²")
@@ -441,15 +466,13 @@ def embedding_figure(out_dir: Path, fig_dir: Path) -> list[Path]:
 
     summary = json.loads((out_dir / "embedding_summary.json").read_text(encoding="utf-8"))
     forecast = summary["forecast_severity_from_pre_fire_state"]
-    panels = (
-        ("Forecast burn ratio from pre-fire state", forecast["rbr"], ("hand-made", "embedding", "both")),
-        ("Forecast LiDAR height loss from pre-fire state", forecast["height_loss"], ("hand-made", "embedding", "both")),
-        (
-            "Match LiDAR height loss after the fire",
-            summary["match_lidar_height_loss_after_fire"],
-            ("burn ratio", "embedding change", "both"),
-        ),
-    )
+    forecast_order = ("hand-made", "embedding", "both")
+    panels = [("Forecast burn ratio from pre-fire state", forecast["rbr"], forecast_order)]
+    if "height_loss" in forecast:
+        panels.append(("Forecast LiDAR height loss from pre-fire state", forecast["height_loss"], forecast_order))
+    if summary.get("match_lidar_height_loss_after_fire"):
+        detect = summary["match_lidar_height_loss_after_fire"]
+        panels.append(("Match LiDAR height loss after the fire", detect, ("burn ratio", "embedding change", "both")))
     labels = {
         "hand-made": "Hand-made predictors",
         "embedding": "AlphaEarth embedding",
@@ -459,9 +482,16 @@ def embedding_figure(out_dir: Path, fig_dir: Path) -> list[Path]:
     }
     colors = {"hand-made": "#8a8a8a", "burn ratio": "#8a8a8a", "embedding": "#2166ac", "embedding change": "#2166ac"}
 
-    fig, axes = plt.subplots(3, 1, figsize=(WIDTH_IN * 0.62, 4.3), sharex=True)
-    fig.subplots_adjust(left=0.36, right=0.95, top=0.93, bottom=0.11, hspace=0.55)
-    for ax, letter, (title, scores, order) in zip(axes, "abc", panels, strict=True):
+    fig, axes = plt.subplots(len(panels), 1, figsize=(WIDTH_IN * 0.62, 0.45 + 1.3 * len(panels)), sharex=True, squeeze=False)
+    axes = axes[:, 0]
+    fig.subplots_adjust(
+        left=0.36,
+        right=0.95,
+        top=1 - 0.3 / (0.45 + 1.3 * len(panels)),
+        bottom=0.45 / (0.45 + 1.3 * len(panels)),
+        hspace=0.55,
+    )
+    for ax, letter, (title, scores, order) in zip(axes, "abc", panels, strict=False):
         for i, key in enumerate(order):
             score = scores[key]
             ax.barh(i, score["r2"], color=colors.get(key, INK), height=0.62)

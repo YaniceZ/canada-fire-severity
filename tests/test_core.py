@@ -112,8 +112,8 @@ def test_select_fire_returns_one_row_or_fails():
 START, END = date(2024, 7, 22), date(2024, 9, 7)
 
 
-def scene(day: date, cloud: float) -> Scene:
-    return Scene(id=f"S2_{day:%Y%m%d}", day=day, cloud=cloud, assets={}, offset_applied=True)
+def scene(day: date, cloud: float, tile: str = "11UMU") -> Scene:
+    return Scene(id=f"S2A_{tile}_{day:%Y%m%d}_0_L2A", day=day, cloud=cloud, assets={}, offset_applied=True)
 
 
 def test_pick_scenes_takes_the_clearest_on_each_side():
@@ -289,3 +289,22 @@ def test_every_fire_has_consistent_dates_and_periods():
 def test_unknown_fire_is_rejected_with_the_known_names():
     with pytest.raises(ValueError, match="jasper"):
         fires.get("nowhere")
+
+
+def test_pick_scenes_keeps_both_scenes_on_one_tile():
+    found = [
+        scene(date(2024, 7, 20), 0.0, "10UGA"),  # clearest pre scene, but no clear post scene on this tile
+        scene(date(2024, 7, 18), 1.0, "11ULR"),
+        scene(date(2024, 9, 5), 0.5, "11ULR"),
+    ]
+    pre, post = pick_scenes(found, START, END)
+    assert pre.id.split("_")[1] == post.id.split("_")[1] == "11ULR"
+
+
+def test_model_drops_lidar_predictors_and_target_when_the_table_has_none():
+    columns = ["x", "y", "rbr", "elevation_m", "slope_deg", "northness", "eastness", "ndmi_2013_15", "ndmi_change"]
+    columns += ["burn_hours", "wind_kmh", "humidity_pct", "fire_weather_index"]
+    groups = model.groups_for(columns)
+    assert groups["structure"] == ("ndmi_2013_15",)
+    assert list(model.targets_for(columns)) == ["rbr"]
+    assert model._features(3, groups)[-1] == "ndmi_change"

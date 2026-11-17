@@ -28,6 +28,8 @@ class Fire:
     hotspots_url: str  # zipped CSV of satellite fire detections for the fire year
     town: tuple[str, float, float]  # label, lon, lat of a place to mark on the maps
     embedding_years: tuple[int, int]  # last full year before the fire, and the fire year
+    lidar_change: bool = False  # True when 1 m LiDAR was flown both before and after the fire
+    bc_cutblocks: bool = False  # True to drop land harvested during the decline record (BC only)
 
 
 _CANELEVATION = "https://canelevation-dem.s3.ca-central-1.amazonaws.com"
@@ -60,9 +62,37 @@ JASPER = Fire(
     hotspots_url="https://cwfis.cfs.nrcan.gc.ca/downloads/hotspots/archive/2024_hotspots.zip",
     town=("Jasper", -118.0814, 52.8737),
     embedding_years=(2023, 2024),
+    lidar_change=True,
 )
 
-FIRES = {fire.key: fire for fire in (JASPER,)}
+MCDOUGALL = Fire(
+    key="mcdougall",
+    name="2023 McDougall Creek wildfire, West Kelowna",
+    grid_crs="EPSG:32611",
+    # First detected on 2023-08-15. NBAC records satellite detections from 2023-08-16 to 2023-09-17.
+    start="2023-08-15",
+    end="2023-09-17",
+    # NBAC 2023 entry: 12,969 ha in the Okanagan, mapped from Sentinel-2.
+    perimeter_url="https://cwfis.cfs.nrcan.gc.ca/downloads/nbac/NBAC_2023_20260513.zip",
+    perimeter_id="2023_834",
+    # Same Landsat 8/9 record as Jasper, ending the summer before the fire.
+    decline_years=(2013, 2022),
+    decline_baseline=(2013, 2014, 2015),
+    decline_recent=(2020, 2021, 2022),
+    decline_season=("07-01", "09-15"),
+    landcover_url=JASPER.landcover_url,
+    dem_url=JASPER.dem_url,
+    hillshade_url=JASPER.hillshade_url,
+    hotspots_url="https://cwfis.cfs.nrcan.gc.ca/downloads/hotspots/archive/2023_hotspots.zip",
+    town=("West Kelowna", -119.5833, 49.8625),
+    embedding_years=(2022, 2023),
+    # Pre-fire LiDAR exists (Okanagan 2018 and 2019) but nothing was flown after the fire.
+    lidar_change=False,
+    # A working forest: without this, clearcuts dominate the NDMI decline map.
+    bc_cutblocks=True,
+)
+
+FIRES = {fire.key: fire for fire in (JASPER, MCDOUGALL)}
 
 
 def get(key: str) -> Fire:

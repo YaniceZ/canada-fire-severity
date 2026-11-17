@@ -1,8 +1,8 @@
 # jasper-fire-severity
 
-Burn severity, pre-fire forest decline and canopy loss for the 2024 Jasper wildfire, from Sentinel-2, Landsat and 1 m airborne LiDAR. Everything runs on open data and reads only the part of each file it needs.
+Burn severity, pre-fire forest decline and canopy loss for two Canadian wildfires: Jasper 2024, and McDougall Creek 2023 in West Kelowna. Sentinel-2, Landsat, 1 m airborne LiDAR and AlphaEarth embeddings, all open data, read only where they are needed. The same code runs on both fires; what is specific to each one is a single entry in `fires.py`.
 
-**Status: analysis done, not validated in the field.** Burn severity from Sentinel-2, canopy loss from LiDAR, the pre-fire decline map, their comparison and a first set of models are in place. The decline map has not been checked against a beetle survey.
+**Status: two fires done, not validated in the field.** Jasper has the full analysis, including LiDAR. McDougall Creek has everything except LiDAR, which was not flown after that fire. Neither decline map has been checked against a beetle survey.
 
 ## The question
 
@@ -104,10 +104,48 @@ The 2023 embedding also recovers the Landsat NDMI decline with an R² of 0.78, s
 
 Caveats: this is one fire and three block splits. The 2024 embedding mixes months before and after the fire. And the LiDAR height loss it is scored against has its own weakness with thin burned stems, described above.
 
+## Second fire: McDougall Creek, 2023
+
+![Four panels for McDougall Creek: burn severity map, pre-fire NDMI change map, yearly NDMI by class, and burn ratio by class](docs/mcdougall/figure1.png)
+
+The McDougall Creek fire burned 12,969 ha above West Kelowna in August and September 2023 and destroyed 189 structures. It is a different forest from Jasper: drier Douglas-fir and pine in the Okanagan, logged for decades, with no recent beetle outbreak on the scale of Jasper's. The point of running it was to see what of the Jasper workflow and results carries over.
+
+**The decline map picks up logging, not just dying trees.** On the first run, 75% of the strongest-decline area sat inside cutblocks that BC's consolidated cutblocks layer records as harvested between 2013 and 2022. A clearcut drops NDMI as sharply as a beetle kill. Jasper is a national park with no logging, so this never showed there. The workflow now drops land harvested during the record when a fire is in BC (451 ha here). After that, only 5% of the conifer forest declined by more than 0.05, against 56% at Jasper; most of what is left is a dip in 2021, the summer of the heat dome.
+
+**Declined stands burned less, not more**, as at Jasper. Median burn ratio ran from 0.34 in the strongest-decline class to 0.50 in stable forest. The declined stands also had less green canopy before the fire (pre-fire NBR 0.32 against 0.47), which is the same measurement effect described above.
+
+![Model scores, predictor importance and the effect of decline for McDougall Creek](docs/mcdougall/figure3.png)
+
+**Fire weather decided far more of the severity here.** Adding the time of burning and the weather lifted the block-validated R² from 0.07 to 0.39; at Jasper it added almost nothing to the burn ratio model. About 80% of the analysed cells were first detected burning between the evening of 17 August and the next afternoon, local time, after a cold front drove the fire downhill toward the lake. A model can only do so much with a day like that.
+
+**Decline still added little**: 0.017 R² on average over ten block splits (0.003 to 0.029). Before the cutblocks were taken out, the same test gave 0.048, so about two thirds of that apparent effect was logging.
+
+![Hand-made predictors against AlphaEarth embeddings for McDougall Creek](docs/mcdougall/figure4.png)
+
+**AlphaEarth again forecasts a little better than the hand-made predictors**: 0.42 against 0.39, with ranges that overlap. It recovers the NDMI decline much less well than at Jasper (R² 0.27 against 0.78), which fits a forest where there was little decline to find.
+
+### What carried over between the two fires
+
+| | Jasper 2024 | McDougall Creek 2023 |
+|---|---:|---:|
+| Area (ha) | 31,645 | 12,969 |
+| High severity share (dNBR) | 64% | 40% |
+| Conifer with NDMI decline above 0.05 | 56% | 5% |
+| Median RBR, strongest decline class vs stable | 0.57 vs 0.57 | 0.34 vs 0.50 |
+| Block R², full model, burn ratio | 0.23 | 0.41 |
+| R² gained by adding decline | 0.022 | 0.017 |
+| Random-split R², same model | 0.41 | 0.59 |
+| AlphaEarth vs hand-made, block R² | 0.25 vs 0.20 | 0.42 vs 0.39 |
+
+Held in both: decline added at most about 0.02 R² once other predictors were in, declined stands never burned more severely, AlphaEarth edged out the hand-made predictors, and a random split scored roughly 0.2 higher than spatial blocks. Not held: which predictors mattered (stand condition at Jasper, fire weather at McDougall Creek), and whether the decline map means beetles at all.
+
+Two fires are still two cases. McDougall Creek had too little decline to be a strong test of the beetle question; what it does test is whether the workflow transfers, and it showed one place where it did not until fixed.
+
 ## Run it
 
 ```bash
 pip install -e ".[dev]"
+# every step takes --fire jasper (the default) or --fire mcdougall
 jasperfire perimeter      # fire perimeter from the National Burned Area Composite
 jasperfire dnbr           # dNBR, RBR and severity classes as GeoTIFFs in out/jasper/
 jasperfire beetle         # yearly Landsat NDMI and the change map (about 8 minutes)
@@ -137,6 +175,8 @@ Every step reads only the window it needs from cloud-hosted files. Nothing large
 | Terrain | MRDEM 30 m terrain model (CanElevation) | 30 m | yes |
 | Fire detections | CWFIS hotspots 2024 (VIIRS), with interpolated fire weather | 375 m | yes |
 | Foundation model embeddings | AlphaEarth Foundations Satellite Embedding, 2023 and 2024, Source Cooperative copy | 10 m | yes |
+| McDougall Creek perimeter | National Burned Area Composite 2023, fire `2023_834`, 12,969 ha | vector | yes |
+| Harvest history (BC) | BC consolidated cutblocks, from the province's open WFS | vector | yes |
 | Beetle survey | No open spatial layer found for inside the park | – | no |
 
 Alberta publishes its beetle aerial surveys for provincial land, not for the national park, so the decline map here stands in for a survey layer. Checking it against Parks Canada's own survey data is still to do.
@@ -145,10 +185,10 @@ No open sub-metre imagery of this fire was found. Maxar's open data programme re
 
 ## Next
 
-1. Ask Parks Canada for the beetle survey polygons and check the decline map against them.
-2. Look at rate of spread instead of severity. That cannot be done here: satellites caught this fire at only four times over two days and then lost it under cloud. It needs a fire with a long, well-observed progression.
-3. Follow early regrowth with the 2025 LiDAR and the 2025–2026 imagery.
-4. Repeat on a second fire with beetle history to see whether the result holds.
+1. Ask Parks Canada for the beetle survey polygons and check the Jasper decline map against them.
+2. Add a third fire with a real beetle history outside a park, to test the beetle question in a working forest.
+3. Follow early regrowth at Jasper with the 2025 LiDAR and the 2025–2026 imagery.
+4. Rate of spread needs a fire with a long, well-observed progression; neither of these has one.
 
 ## Tests
 
@@ -157,7 +197,7 @@ ruff check .
 pytest -q
 ```
 
-The 35 tests run offline. They cover the index maths, reflectance scaling, cloud masking, yearly compositing, scene choice, canopy height and cover per cell, slope and aspect, matching cells to fire detections, the block split and the comparison table.
+The 37 tests run offline. They cover the index maths, reflectance scaling, cloud masking, yearly compositing, scene choice, canopy height and cover per cell, slope and aspect, matching cells to fire detections, the block split and the comparison table.
 
 ## Credits
 

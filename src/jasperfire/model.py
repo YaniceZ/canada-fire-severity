@@ -118,19 +118,20 @@ def build_table(fire: Fire, perimeter, data_dir: Path, out_dir: Path):
 
     dem = beetle.read_on_grid(fire.dem_url, grid, "bilinear").astype("float32")
     slope, northness, eastness = slope_aspect(dem, grid.size)
-    canopy_path = out_dir / "canopy_30m.tif"
     layers = {
         "rbr": beetle.read_on_grid(str(out_dir / "rbr.tif"), grid, "average"),
-        "height_loss": local("canopy_height_loss"),
         "elevation_m": dem,
         "slope_deg": slope,
         "northness": northness,
         "eastness": eastness,
-        "canopy_height_2019_m": canopy._band_on_grid(canopy_path, 1, grid),
-        "canopy_cover_2019": canopy._band_on_grid(canopy_path, 2, grid),
         "ndmi_2013_15": baseline,
         "ndmi_change": local("ndmi_change"),
     }
+    if fire.lidar_change:
+        canopy_path = out_dir / "canopy_30m.tif"
+        layers["height_loss"] = local("canopy_height_loss")
+        layers["canopy_height_2019_m"] = canopy._band_on_grid(canopy_path, 1, grid)
+        layers["canopy_cover_2019"] = canopy._band_on_grid(canopy_path, 2, grid)
 
     rows, cols = np.mgrid[0 : grid.height : THIN, 0 : grid.width : THIN]
     rows, cols = rows.ravel(), cols.ravel()
@@ -157,10 +158,23 @@ def build_table(fire: Fire, perimeter, data_dir: Path, out_dir: Path):
     return table
 
 
-def _features(upto: int) -> list[str]:
+def groups_for(table) -> dict[str, tuple[str, ...]]:
+    """FEATURE_GROUPS limited to the columns the table has. Fires without LiDAR lose the LiDAR predictors."""
+    columns = set(getattr(table, "columns", table))
+    return {group: tuple(n for n in names if n in columns) for group, names in FEATURE_GROUPS.items()}
+
+
+def targets_for(table) -> dict[str, str]:
+    """The targets the table has: the burn ratio always, LiDAR height loss only where it was measured."""
+    columns = set(getattr(table, "columns", table))
+    return {name: label for name, label in TARGETS.items() if name in columns}
+
+
+def _features(upto: int, groups: dict[str, tuple[str, ...]] | None = None) -> list[str]:
+    groups = FEATURE_GROUPS if groups is None else groups
     names = []
-    for group in list(FEATURE_GROUPS)[: upto + 1]:
-        names.extend(FEATURE_GROUPS[group])
+    for group in list(groups)[: upto + 1]:
+        names.extend(groups[group])
     return names
 
 
@@ -188,12 +202,13 @@ def decline_gain(table, target: str, seeds: int = REPEATS) -> list[float]:
     blocks happened to be held out together. Repeating the split shows the spread.
     """
     block_ids = blocks.assign_blocks(table["x"].to_numpy(), table["y"].to_numpy(), BLOCK_M)
-    last = len(FEATURE_GROUPS) - 1
+    groups = groups_for(table)
+    last = len(groups) - 1
     gains = []
     for seed in range(seeds):
         splits = list(blocks.block_kfold(block_ids, k=FOLDS, seed=seed))
-        without = cv_score(table, _features(last - 1), target, splits)["r2"]
-        gains.append(round(cv_score(table, _features(last), target, splits)["r2"] - without, 3))
+        without = cv_score(table, _features(last - 1, groups), target, splits)["r2"]
+        gains.append(round(cv_score(table, _features(last, groups), target, splits)["r2"] - without, 3))
     return gains
 
 
@@ -205,7 +220,8 @@ def fit(table, out_dir: Path) -> dict:
     block_ids = blocks.assign_blocks(table["x"].to_numpy(), table["y"].to_numpy(), BLOCK_M)
     block_splits = list(blocks.block_kfold(block_ids, k=FOLDS, seed=0))
     random_splits = list(KFold(FOLDS, shuffle=True, random_state=0).split(table))
-    everything = _features(len(FEATURE_GROUPS) - 1)
+    groups = groups_for(table)
+    everything = _features(len(groups) - 1, groups)
 
     result = {
         "cells": len(table),
@@ -213,12 +229,13 @@ def fit(table, out_dir: Path) -> dict:
         "blocks": int(len(np.unique(block_ids))),
         "block_size_m": BLOCK_M,
         "folds": FOLDS,
+        "feature_groups": {group: list(names) for group, names in groups.items()},
         "targets": {},
     }
-    for target in TARGETS:
+    for target in targets_for(table):
         steps = []
-        for i, group in enumerate(FEATURE_GROUPS):
-            features = _features(i)
+        for i, group in enumerate(groups):
+            features = _features(i, groups)
             steps.append(
                 {
                     "added": group,

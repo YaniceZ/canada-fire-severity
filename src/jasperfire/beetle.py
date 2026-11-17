@@ -13,6 +13,7 @@ and there is no public field layer inside the park to check it against.
 from __future__ import annotations
 
 import json
+import urllib.parse
 import urllib.request
 import warnings
 from concurrent.futures import ThreadPoolExecutor
@@ -231,6 +232,44 @@ def earlier_fire_mask(data_dir: Path, grid: Grid, years: tuple[int, ...]) -> np.
     return rasterize(shapes, out_shape=(grid.height, grid.width), transform=grid.transform, dtype="uint8").astype(bool)
 
 
+def harvest_mask(data_dir: Path, grid: Grid, years: tuple[int, ...]) -> np.ndarray:
+    """True where BC's consolidated cutblocks show a harvest that started in one of `years`.
+
+    A clearcut drops NDMI as sharply as a beetle kill does, so in a working forest the
+    decline map is mostly a logging map unless these areas are taken out.
+    """
+    import geopandas as gpd
+    from pyproj import Transformer
+    from rasterio.features import rasterize
+
+    cached = data_dir / "bc_cutblocks.geojson"
+    if not cached.exists():
+        left, bottom, right, top = grid.bounds
+        lon, lat = Transformer.from_crs(grid.crs, 4326, always_xy=True).transform(
+            [left, right, left, right], [bottom, bottom, top, top]
+        )
+        query = urllib.parse.urlencode(
+            {
+                "service": "WFS",
+                "version": "2.0.0",
+                "request": "GetFeature",
+                "typeName": sources.BC_CUTBLOCKS_LAYER,
+                "outputFormat": "application/json",
+                "srsName": "EPSG:4326",
+                "bbox": f"{min(lat)},{min(lon)},{max(lat)},{max(lon)},urn:ogc:def:crs:EPSG:4326",
+            }
+        )
+        data_dir.mkdir(parents=True, exist_ok=True)
+        with urllib.request.urlopen(f"{sources.BC_WFS_URL}?{query}", timeout=300) as response:
+            cached.write_bytes(response.read())
+    blocks = gpd.read_file(cached)
+    blocks = blocks[blocks["HARVEST_START_YEAR_CALENDAR"].isin(years)].to_crs(grid.crs)
+    if blocks.empty:
+        return np.zeros((grid.height, grid.width), dtype=bool)
+    shape = (grid.height, grid.width)
+    return rasterize(blocks.geometry, out_shape=shape, transform=grid.transform, dtype="uint8").astype(bool)
+
+
 # --- pipeline ----------------------------------------------------------------
 
 
@@ -277,7 +316,10 @@ def run(fire: Fire, perimeter, data_dir: Path, out_dir: Path) -> dict:
     inside = ~geometry_mask(outline.geometry, out_shape=(grid.height, grid.width), transform=grid.transform)
     conifer = conifer_mask(grid, fire.landcover_url)
     burned_before = earlier_fire_mask(data_dir, grid, tuple(years))
-    study = inside & conifer & ~burned_before & ~np.isnan(change)
+    harvested = np.zeros_like(inside)
+    if fire.bc_cutblocks:
+        harvested = harvest_mask(data_dir, grid, tuple(years))
+    study = inside & conifer & ~burned_before & ~harvested & ~np.isnan(change)
 
     _write(out_dir / "ndmi_annual.tif", np.stack([annual[y] for y in years]), grid, np.nan, [str(y) for y in years])
     _write(out_dir / "ndmi_change.tif", change, grid, np.nan)
@@ -297,6 +339,7 @@ def run(fire: Fire, perimeter, data_dir: Path, out_dir: Path) -> dict:
         "perimeter_ha": round(float(inside.sum()) * hectares, 1),
         "conifer_2010_ha": round(float((inside & conifer).sum()) * hectares, 1),
         "burned_2013_2023_ha": round(float((inside & burned_before).sum()) * hectares, 1),
+        "harvested_in_record_ha": round(float((inside & conifer & harvested).sum()) * hectares, 1),
         "study_ha": round(float(study.sum()) * hectares, 1),
         "ndmi_change_median": round(float(np.nanmedian(change[study])), 3),
         "area_ha_by_class": {name: round(float((classes == i).sum()) * hectares, 1) for i, name in enumerate(DECLINE_NAMES)},

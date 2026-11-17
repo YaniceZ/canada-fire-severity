@@ -1,0 +1,37 @@
+{
+  "cells": 9082,
+  "dropped_for_missing_embedding": 0,
+  "embedding_years": {
+    "before": 2022,
+    "fire year": 2023
+  },
+  "block_splits": 3,
+  "forecast_severity_from_pre_fire_state": {
+    "rbr": {
+      "hand-made": {
+        "r2": 0.387,
+        "min": 0.356,
+        "max": 0.411
+      },
+      "embedding": {
+        "r2": 0.416,
+        "min": 0.393,
+        "max": 0.452
+      },
+      "both": {
+        "r2": 0.426,
+        "min": 0.409,
+        "max": 0.449
+      }
+    }
+  },
+  "match_lidar_height_loss_after_fire": null,
+  "recover_ndmi_decline": {
+    "embedding": {
+      "r2": 0.267,
+      "min": 0.252,
+      "max": 0.287
+    }
+  },
+  "note": "All scores are R2 on held-out 3 km blocks, averaged over the block splits. Fire weather is in every forecast model."
+}

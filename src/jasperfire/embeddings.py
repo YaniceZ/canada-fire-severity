@@ -115,15 +115,16 @@ def run(fire: Fire, table, out_dir: Path) -> dict:
     block_ids = blocks.assign_blocks(table["x"].to_numpy(), table["y"].to_numpy(), model.BLOCK_M)
 
     def columns(*groups: str) -> np.ndarray:
-        names = [name for group in groups for name in model.FEATURE_GROUPS[group]]
+        names = [name for group in groups for name in available[group]]
         return table[names].to_numpy()
 
+    available = model.groups_for(table)
     weather = columns("fire weather")
     hand = columns("terrain", "structure", "decline")
 
     # 1. Describing the stand before the fire: which predictors forecast severity best?
     forecast = {}
-    for target in model.TARGETS:
+    for target in model.targets_for(table):
         y = table[target].to_numpy()
         forecast[target] = {
             "hand-made": _score(np.hstack([hand, weather]), y, block_ids),
@@ -132,12 +133,14 @@ def run(fire: Fire, table, out_dir: Path) -> dict:
         }
 
     # 2. Seeing what the fire did: which satellite measure matches the LiDAR canopy loss best?
-    loss = table["height_loss"].to_numpy()
-    detect = {
-        "burn ratio": _score(table[["rbr"]].to_numpy(), loss, block_ids),
-        "embedding change": _score(np.hstack([before, after]), loss, block_ids),
-        "both": _score(np.hstack([table[["rbr"]].to_numpy(), before, after]), loss, block_ids),
-    }
+    detect = None
+    if "height_loss" in table:
+        loss = table["height_loss"].to_numpy()
+        detect = {
+            "burn ratio": _score(table[["rbr"]].to_numpy(), loss, block_ids),
+            "embedding change": _score(np.hstack([before, after]), loss, block_ids),
+            "both": _score(np.hstack([table[["rbr"]].to_numpy(), before, after]), loss, block_ids),
+        }
 
     # 3. Does the pre-fire embedding already know which stands had declined?
     decline = {"embedding": _score(before, table["ndmi_change"].to_numpy(), block_ids)}

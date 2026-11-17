@@ -1,0 +1,16 @@
+{
+  "pre_scene": "S2A_11ULR_20230731_0_L2A",
+  "post_scene": "S2B_11ULR_20230914_0_L2A",
+  "pixel_size_m": 20.0,
+  "perimeter_ha": 12969.7,
+  "valid_share_of_perimeter": 0.9984,
+  "dnbr_median": 0.55,
+  "area_ha_by_class": {
+    "unburned": 363.1,
+    "low": 2095.2,
+    "moderate-low": 2595.0,
+    "moderate-high": 2697.9,
+    "high": 5202.8
+  },
+  "note": "Class breaks are the generic Key and Benson values, not calibrated on field plots."
+}

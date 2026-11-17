@@ -21,6 +21,11 @@ AEF_INDEX_URL = "https://data.source.coop/tge-labs/aef/v1/annual/aef_index.gpkg"
 AEF_S3_PREFIX = "s3://us-west-2.opendata.source.coop/"
 AEF_HTTPS_PREFIX = "https://data.source.coop/"
 
+# British Columbia's open map service. Its consolidated cutblocks layer records every
+# harvest the province knows of, with the year it started.
+BC_WFS_URL = "https://openmaps.gov.bc.ca/geo/pub/wfs"
+BC_CUTBLOCKS_LAYER = "pub:WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP"
+
 # Sentinel-2 L2A as cloud-optimized GeoTIFFs, searched through Element 84's Earth Search.
 STAC_URL = "https://earth-search.aws.element84.com/v1"
 S2_COLLECTION = "sentinel-2-l2a"

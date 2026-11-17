@@ -1,0 +1,65 @@
+{
+  "years": [
+    2013,
+    2022
+  ],
+  "baseline_years": [
+    2013,
+    2014,
+    2015
+  ],
+  "recent_years": [
+    2020,
+    2021,
+    2022
+  ],
+  "scenes_per_year": {
+    "2013": 9,
+    "2014": 8,
+    "2015": 10,
+    "2016": 9,
+    "2017": 9,
+    "2018": 9,
+    "2019": 7,
+    "2020": 9,
+    "2021": 9,
+    "2022": 16
+  },
+  "pixel_size_m": 30.0,
+  "perimeter_ha": 12984.8,
+  "conifer_2010_ha": 9478.7,
+  "burned_2013_2023_ha": 110.2,
+  "harvested_in_record_ha": 450.8,
+  "study_ha": 8982.0,
+  "ndmi_change_median": 0.016,
+  "area_ha_by_class": {
+    "strong decline": 108.7,
+    "moderate decline": 370.1,
+    "slight decline": 995.6,
+    "stable or gain": 7507.6
+  },
+  "largest_drop_year_ha_in_declining_pixels": {
+    "2014": 2.4,
+    "2015": 59.7,
+    "2016": 20.0,
+    "2017": 11.5,
+    "2018": 48.9,
+    "2019": 44.0,
+    "2020": 52.3,
+    "2021": 236.7,
+    "2022": 3.3
+  },
+  "study_mean_ndmi_by_year": {
+    "2013": 0.225,
+    "2014": 0.248,
+    "2015": 0.225,
+    "2016": 0.238,
+    "2017": 0.252,
+    "2018": 0.246,
+    "2019": 0.243,
+    "2020": 0.267,
+    "2021": 0.231,
+    "2022": 0.243
+  },
+  "note": "NDMI decline is a proxy for beetle mortality and has not been checked against field data."
+}
