@@ -18,10 +18,9 @@ from pathlib import Path
 import numpy as np
 
 from jasperfire import beetle, blocks, model, sources
+from jasperfire.fires import Fire
 
 NODATA = -128
-PRE_FIRE_YEAR = 2023
-FIRE_YEAR = 2024
 SEEDS = 3  # block splits per comparison
 
 
@@ -106,10 +105,11 @@ def _score(x: np.ndarray, y: np.ndarray, block_ids: np.ndarray) -> dict:
     return {"r2": round(float(np.mean(scores)), 3), "min": round(min(scores), 3), "max": round(max(scores), 3)}
 
 
-def run(table, out_dir: Path) -> dict:
+def run(fire: Fire, table, out_dir: Path) -> dict:
     """Score every predictor set and write embedding_summary.json."""
-    before = sample(table, PRE_FIRE_YEAR, out_dir)
-    after = sample(table, FIRE_YEAR, out_dir)
+    pre_year, fire_year = fire.embedding_years
+    before = sample(table, pre_year, out_dir)
+    after = sample(table, fire_year, out_dir)
     keep = ~(np.isnan(before).any(axis=1) | np.isnan(after).any(axis=1))
     table, before, after = table[keep].reset_index(drop=True), before[keep], after[keep]
     block_ids = blocks.assign_blocks(table["x"].to_numpy(), table["y"].to_numpy(), model.BLOCK_M)
@@ -145,7 +145,7 @@ def run(table, out_dir: Path) -> dict:
     result = {
         "cells": len(table),
         "dropped_for_missing_embedding": int((~keep).sum()),
-        "embedding_years": {"before": PRE_FIRE_YEAR, "fire year": FIRE_YEAR},
+        "embedding_years": {"before": pre_year, "fire year": fire_year},
         "block_splits": SEEDS,
         "forecast_severity_from_pre_fire_state": forecast,
         "match_lidar_height_loss_after_fire": detect,

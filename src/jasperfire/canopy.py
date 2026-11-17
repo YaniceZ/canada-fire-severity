@@ -18,6 +18,7 @@ from pathlib import Path
 import numpy as np
 
 from jasperfire import beetle, compare, indices, sources
+from jasperfire.fires import Fire
 from jasperfire.lidar import canopy_height
 
 CELL = 30  # metres; output cell, a whole number of 1 m LiDAR pixels
@@ -144,14 +145,14 @@ def _medians(mask: np.ndarray, columns: dict[str, np.ndarray], hectares: float) 
     return row
 
 
-def analyse(perimeter, out_dir: Path) -> dict:
+def analyse(fire: Fire, perimeter, out_dir: Path) -> dict:
     """Compare canopy loss inside the fire with the unburned ring around it, and by class."""
     import rasterio
     from rasterio.features import geometry_mask
 
-    fire = perimeter.to_crs(sources.GRID_CRS)
-    ring = fire.geometry.buffer(BUFFER_M).union_all()
-    grid = beetle.grid_for(ring.bounds, sources.GRID_CRS)
+    burn_area = perimeter.to_crs(fire.grid_crs)
+    ring = burn_area.geometry.buffer(BUFFER_M).union_all()
+    grid = beetle.grid_for(ring.bounds, fire.grid_crs)
     shape = (grid.height, grid.width)
 
     canopy = out_dir / "canopy_30m.tif"
@@ -162,13 +163,13 @@ def analyse(perimeter, out_dir: Path) -> dict:
     def inside(geometry) -> np.ndarray:
         return ~geometry_mask([geometry], out_shape=shape, transform=grid.transform)
 
-    outline = fire.geometry.union_all()
+    outline = burn_area.geometry.union_all()
     burned = inside(outline.buffer(-EDGE_M))
     control = inside(ring) & ~inside(outline.buffer(EDGE_M))
 
     names = ("ndmi_change", "rbr", "dnbr", "severity")
     layers = {name: beetle.read_on_grid(str(out_dir / f"{name}.tif"), grid, "nearest") for name in names}
-    conifer = beetle.conifer_mask(grid)
+    conifer = beetle.conifer_mask(grid, fire.landcover_url)
     valid = conifer & ~np.isnan(height_loss) & ~np.isnan(layers["ndmi_change"])
     burned &= valid & ~np.isnan(layers["rbr"])
     control &= valid

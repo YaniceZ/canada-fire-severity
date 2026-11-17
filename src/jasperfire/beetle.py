@@ -22,6 +22,7 @@ from pathlib import Path
 import numpy as np
 
 from jasperfire import sources
+from jasperfire.fires import Fire
 
 # Landsat Collection 2 QA_PIXEL bits that mark a pixel as unusable:
 # 0 fill, 1 dilated cloud, 2 cirrus, 3 cloud, 4 cloud shadow, 5 snow, 7 water.
@@ -155,7 +156,9 @@ def _token() -> str:
         return json.load(response)["token"]
 
 
-def search_landsat(bbox: tuple[float, float, float, float], year: int, max_cloud: float = 95.0) -> list[dict]:
+def search_landsat(
+    bbox: tuple[float, float, float, float], year: int, season: tuple[str, str], max_cloud: float = 95.0
+) -> list[dict]:
     """Landsat 8/9 summer scenes for one year, as {id, nir, swir1, qa} with signed URLs.
 
     The scene-level cloud limit is loose on purpose. Only one Landsat path covers the
@@ -164,7 +167,7 @@ def search_landsat(bbox: tuple[float, float, float, float], year: int, max_cloud
     """
     from pystac_client import Client
 
-    start, end = sources.BEETLE_SEASON
+    start, end = season
     client = Client.open(sources.PC_STAC_URL)
     result = client.search(
         collections=[sources.LANDSAT_COLLECTION],
@@ -192,9 +195,11 @@ def scene_ndmi(scene: dict, grid: Grid) -> np.ndarray:
     return value
 
 
-def annual_ndmi(bbox: tuple[float, float, float, float], grid: Grid, year: int, workers: int = 8) -> tuple[np.ndarray, int]:
+def annual_ndmi(
+    bbox: tuple[float, float, float, float], grid: Grid, year: int, season: tuple[str, str], workers: int = 8
+) -> tuple[np.ndarray, int]:
     """Summer median NDMI for one year and the number of scenes that went into it."""
-    found = search_landsat(bbox, year)
+    found = search_landsat(bbox, year, season)
     if not found:
         raise ValueError(f"no Landsat 8/9 scenes for {year}")
     with ThreadPoolExecutor(workers) as pool:
@@ -202,9 +207,9 @@ def annual_ndmi(bbox: tuple[float, float, float, float], grid: Grid, year: int, 
     return composite(stack, min_obs=1), len(found)
 
 
-def conifer_mask(grid: Grid) -> np.ndarray:
-    """True where the 2010 Land Cover of Canada shows needleleaf forest."""
-    return np.isin(read_on_grid(sources.LANDCOVER_2010_URL, grid), CONIFER_CLASSES)
+def conifer_mask(grid: Grid, landcover_url: str) -> np.ndarray:
+    """True where the land cover from before the die-off shows needleleaf forest."""
+    return np.isin(read_on_grid(landcover_url, grid), CONIFER_CLASSES)
 
 
 def earlier_fire_mask(data_dir: Path, grid: Grid, years: tuple[int, ...]) -> np.ndarray:
@@ -251,26 +256,26 @@ def _write(path: Path, array: np.ndarray, grid: Grid, nodata, descriptions: list
             dst.set_band_description(i, text)
 
 
-def run(perimeter, data_dir: Path, out_dir: Path) -> dict:
+def run(fire: Fire, perimeter, data_dir: Path, out_dir: Path) -> dict:
     """Write the annual NDMI stack, the change map and the masks. Returns a summary."""
     from rasterio.features import geometry_mask
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    fire = perimeter.to_crs(sources.GRID_CRS)
-    grid = grid_for(tuple(fire.total_bounds), sources.GRID_CRS)
+    outline = perimeter.to_crs(fire.grid_crs)
+    grid = grid_for(tuple(outline.total_bounds), fire.grid_crs)
     bbox = tuple(float(v) for v in perimeter.to_crs(4326).total_bounds)
 
-    years = list(range(sources.BEETLE_YEARS[0], sources.BEETLE_YEARS[1] + 1))
+    years = list(range(fire.decline_years[0], fire.decline_years[1] + 1))
     annual, scene_counts = {}, {}
     for year in years:
-        annual[year], scene_counts[year] = annual_ndmi(bbox, grid, year)
+        annual[year], scene_counts[year] = annual_ndmi(bbox, grid, year, fire.decline_season)
         print(f"  {year}: {scene_counts[year]} scenes")
 
-    change = period_change(annual, sources.BEETLE_BASELINE, sources.BEETLE_RECENT)
+    change = period_change(annual, fire.decline_baseline, fire.decline_recent)
     drop_year = largest_drop_year(annual)
 
-    inside = ~geometry_mask(fire.geometry, out_shape=(grid.height, grid.width), transform=grid.transform)
-    conifer = conifer_mask(grid)
+    inside = ~geometry_mask(outline.geometry, out_shape=(grid.height, grid.width), transform=grid.transform)
+    conifer = conifer_mask(grid, fire.landcover_url)
     burned_before = earlier_fire_mask(data_dir, grid, tuple(years))
     study = inside & conifer & ~burned_before & ~np.isnan(change)
 
@@ -285,8 +290,8 @@ def run(perimeter, data_dir: Path, out_dir: Path) -> dict:
     drop_counts = {int(y): int((drop_year[declining] == y).sum()) for y in years[1:]}
     summary = {
         "years": [years[0], years[-1]],
-        "baseline_years": list(sources.BEETLE_BASELINE),
-        "recent_years": list(sources.BEETLE_RECENT),
+        "baseline_years": list(fire.decline_baseline),
+        "recent_years": list(fire.decline_recent),
         "scenes_per_year": scene_counts,
         "pixel_size_m": grid.size,
         "perimeter_ha": round(float(inside.sum()) * hectares, 1),

@@ -22,7 +22,8 @@ from pathlib import Path
 
 import numpy as np
 
-from jasperfire import beetle, blocks, canopy, sources
+from jasperfire import beetle, blocks, canopy
+from jasperfire.fires import Fire
 
 FEATURE_GROUPS = {
     "terrain": ("elevation_m", "slope_deg", "northness", "eastness"),
@@ -61,24 +62,25 @@ def nearest_detection(x, y, det_x, det_y, max_distance: float) -> tuple[np.ndarr
     return index, distance <= max_distance
 
 
-def load_hotspots(data_dir: Path, bbox: tuple[float, float, float, float]):
+def load_hotspots(fire: Fire, data_dir: Path, bbox: tuple[float, float, float, float]):
     """VIIRS fire detections inside `bbox` (lon/lat) during the fire, cached as a small CSV."""
     import pandas as pd
 
-    cached = data_dir / "jasper_hotspots.csv"
+    cached = data_dir / f"{fire.key}_hotspots.csv"
     if cached.exists():
         return pd.read_csv(cached, parse_dates=["rep_date"])
     folder = data_dir / "hotspots"
     folder.mkdir(parents=True, exist_ok=True)
-    csv = folder / "2024_hotspots.csv"
+    member = Path(fire.hotspots_url).name.replace(".zip", ".csv")
+    csv = folder / member
     if not csv.exists():
         zip_path = folder / "hotspots.zip"
-        request = urllib.request.Request(sources.HOTSPOTS_URL, headers={"User-Agent": "jasperfire"})
+        request = urllib.request.Request(fire.hotspots_url, headers={"User-Agent": "jasperfire"})
         with urllib.request.urlopen(request, timeout=600) as response, open(zip_path, "wb") as f:
             while chunk := response.read(1 << 20):
                 f.write(chunk)
         with zipfile.ZipFile(zip_path) as z:
-            z.extract("2024_hotspots.csv", folder)
+            z.extract(member, folder)
         zip_path.unlink()
     columns = ["rep_date", "sensor", "lat", "lon", "ws", "rh", "fwi"]
     spots = pd.read_csv(csv, usecols=columns, parse_dates=["rep_date"], low_memory=False)
@@ -86,14 +88,14 @@ def load_hotspots(data_dir: Path, bbox: tuple[float, float, float, float]):
         spots["lon"].between(bbox[0], bbox[2])
         & spots["lat"].between(bbox[1], bbox[3])
         & (spots["sensor"] == "VIIRS-I")
-        & spots["rep_date"].between(sources.FIRE_START, f"{sources.FIRE_END} 23:59")
+        & spots["rep_date"].between(fire.start, f"{fire.end} 23:59")
     )
     spots = spots[keep].reset_index(drop=True)
     spots.to_csv(cached, index=False)
     return spots
 
 
-def build_table(perimeter, data_dir: Path, out_dir: Path):
+def build_table(fire: Fire, perimeter, data_dir: Path, out_dir: Path):
     """One row per kept 30 m cell, with both targets and all predictors. Written to pixel_table.csv.gz."""
     import geopandas as gpd
     import pandas as pd
@@ -105,7 +107,7 @@ def build_table(perimeter, data_dir: Path, out_dir: Path):
         grid = beetle.Grid(src.crs.to_string(), t.c, t.f, t.a, src.width, src.height)
         years = [int(y) for y in src.descriptions]
         annual = src.read()
-    baseline = beetle.composite(np.stack([annual[years.index(y)] for y in sources.BEETLE_BASELINE]))
+    baseline = beetle.composite(np.stack([annual[years.index(y)] for y in fire.decline_baseline]))
 
     def local(name: str) -> np.ndarray:
         return beetle.read_on_grid(str(out_dir / f"{name}.tif"), grid)
@@ -114,7 +116,7 @@ def build_table(perimeter, data_dir: Path, out_dir: Path):
     core = perimeter.to_crs(grid.crs).geometry.union_all().buffer(-canopy.EDGE_M)
     study &= ~geometry_mask([core], out_shape=study.shape, transform=grid.transform)
 
-    dem = beetle.read_on_grid(sources.DEM_URL, grid, "bilinear").astype("float32")
+    dem = beetle.read_on_grid(fire.dem_url, grid, "bilinear").astype("float32")
     slope, northness, eastness = slope_aspect(dem, grid.size)
     canopy_path = out_dir / "canopy_30m.tif"
     layers = {
@@ -142,7 +144,7 @@ def build_table(perimeter, data_dir: Path, out_dir: Path):
 
     # When each cell burned, and the weather then: taken from the nearest fire detection.
     bbox = tuple(float(v) for v in perimeter.to_crs(4326).buffer(0.02).total_bounds)
-    spots = load_hotspots(data_dir, bbox)
+    spots = load_hotspots(fire, data_dir, bbox)
     points = gpd.GeoSeries(gpd.points_from_xy(spots["lon"], spots["lat"]), crs=4326).to_crs(grid.crs)
     index, near = nearest_detection(table["x"], table["y"], points.x, points.y, MAX_DETECTION_M)
     start = spots["rep_date"].min()

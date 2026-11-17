@@ -10,9 +10,9 @@ Mountain pine beetle killed much of the lodgepole pine around Jasper in the year
 
 ## What it found so far
 
-![Four panels: burn severity map, NDMI change map, yearly NDMI by decline class, and burn ratio by decline class](docs/figure1.png)
+![Four panels: burn severity map, NDMI change map, yearly NDMI by decline class, and burn ratio by decline class](docs/jasper/figure1.png)
 
-*(a) dNBR severity classes inside the fire perimeter. (b) Change in summer NDMI of conifer forest between 2013–15 and 2021–23. (c) Mean summer NDMI per year for four classes of that change; grey bands mark the two periods compared. (d) Relativized burn ratio by class: violins show all pixels, bars the interquartile range, dots and numbers the median. Maps are drawn over shaded relief from the 30 m national terrain model. A vector copy is in `docs/figure1.pdf`.*
+*(a) dNBR severity classes inside the fire perimeter. (b) Change in summer NDMI of conifer forest between 2013–15 and 2021–23. (c) Mean summer NDMI per year for four classes of that change; grey bands mark the two periods compared. (d) Relativized burn ratio by class: violins show all pixels, bars the interquartile range, dots and numbers the median. Maps are drawn over shaded relief from the 30 m national terrain model. A vector copy is in `docs/jasper/figure1.pdf`.*
 
 **1. Almost two thirds of the fire burned at high severity.**
 
@@ -37,7 +37,7 @@ This does not show that beetle kill had no effect. Most of the fire burned as a 
 
 **4. LiDAR agrees with the satellite index, and also finds no difference between declined and stable stands.**
 
-![Three panels: canopy height loss map, height loss by severity class, height loss by decline class](docs/figure2.png)
+![Three panels: canopy height loss map, height loss by severity class, height loss by decline class](docs/jasper/figure2.png)
 
 *(a) Share of the 2019 mean canopy height that was gone in October 2024, per 30 m cell, where both LiDAR surveys have data. (b) That share by dNBR severity class. (c) The same by pre-fire decline class; dashed lines are the medians in unburned conifer forest just outside the perimeter.*
 
@@ -63,7 +63,7 @@ Three things to keep in mind:
 
 **5. With terrain, stand structure and fire weather accounted for, decline adds almost nothing.**
 
-![Six panels: validation scores, predictor importance and the effect of decline, for the burn ratio and for LiDAR height loss](docs/figure3.png)
+![Six panels: validation scores, predictor importance and the effect of decline, for the burn ratio and for LiDAR height loss](docs/jasper/figure3.png)
 
 *Top row: relativized burn ratio. Bottom row: LiDAR canopy height loss. (a, d) R² of models that add one group of predictors at a time, scored on a random split and on spatial blocks. (b, e) How much the held-out score drops when one predictor is shuffled. (c, f) How the prediction moves with NDMI change alone; the vertical axis spans one standard deviation of the target either side of zero.*
 
@@ -84,7 +84,7 @@ Two cautions. The models explain under a quarter of the variation on land they h
 
 **6. A geospatial foundation model describes the stands a little better, and sees the fire much better.**
 
-![Three bar charts comparing hand-made predictors and the burn ratio with AlphaEarth embeddings](docs/figure4.png)
+![Three bar charts comparing hand-made predictors and the burn ratio with AlphaEarth embeddings](docs/jasper/figure4.png)
 
 *R² on held-out 3 km blocks, averaged over three block splits; the line on each bar is the range. (a, b) Forecasting severity from what was known before the fire. (c) Matching the LiDAR canopy height loss from satellite data alone.*
 
@@ -109,15 +109,17 @@ Caveats: this is one fire and three block splits. The 2024 embedding mixes month
 ```bash
 pip install -e ".[dev]"
 jasperfire perimeter      # fire perimeter from the National Burned Area Composite
-jasperfire dnbr           # dNBR, RBR and severity classes as GeoTIFFs in out/
+jasperfire dnbr           # dNBR, RBR and severity classes as GeoTIFFs in out/jasper/
 jasperfire beetle         # yearly Landsat NDMI and the change map (about 8 minutes)
 jasperfire compare        # severity by decline class
 jasperfire canopy-loss    # LiDAR canopy height loss for the whole fire (about 6 minutes)
 jasperfire model          # nested models with spatial block validation (about 4 minutes)
 jasperfire embeddings     # hand-made predictors against AlphaEarth embeddings (about 4 minutes)
-jasperfire figures        # the figures above, into docs/
+jasperfire figures        # the figures above, into docs/jasper/
 jasperfire canopy --lon -118.0989 --lat 52.8466    # LiDAR canopy cover in one 500 m window
 ```
+
+What is specific to one fire (dates, perimeter, land cover, terrain, the years compared) lives in `src/jasperfire/fires.py`, and every step takes `--fire <key>`. Jasper is the only entry so far.
 
 Every step reads only the window it needs from cloud-hosted files. Nothing large is stored apart from the burned-area shapefiles, though `canopy-loss` streams several gigabytes of LiDAR.
 
@@ -155,7 +157,7 @@ ruff check .
 pytest -q
 ```
 
-The 33 tests run offline. They cover the index maths, reflectance scaling, cloud masking, yearly compositing, scene choice, canopy height and cover per cell, slope and aspect, matching cells to fire detections, the block split and the comparison table.
+The 35 tests run offline. They cover the index maths, reflectance scaling, cloud masking, yearly compositing, scene choice, canopy height and cover per cell, slope and aspect, matching cells to fire detections, the block split and the comparison table.
 
 ## Credits
 

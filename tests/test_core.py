@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from shapely.geometry import box
 
-from jasperfire import beetle, blocks, canopy, compare, embeddings, indices, lidar, model, sources
+from jasperfire import beetle, blocks, canopy, compare, embeddings, fires, indices, lidar, model, sources
 from jasperfire.perimeter import select_fire
 from jasperfire.scenes import Scene, pick_scenes
 
@@ -271,3 +271,21 @@ def test_dequantize_keeps_the_sign_and_the_range():
     out = embeddings.dequantize(np.arange(-127, 128, dtype="int16").astype("int8"))
     assert out.min() >= -1 and out.max() <= 1
     assert (np.sign(out) == np.sign(np.arange(-127, 128))).all()
+
+
+# --- fire settings ---------------------------------------------------------
+
+
+def test_every_fire_has_consistent_dates_and_periods():
+    for fire in fires.FIRES.values():
+        assert fire.start < fire.end
+        first, last = fire.decline_years
+        assert first <= min(fire.decline_baseline) and max(fire.decline_recent) <= last
+        assert max(fire.decline_baseline) < min(fire.decline_recent)
+        assert int(fire.start[:4]) > last  # the decline record must end before the fire year
+        assert fire.embedding_years == (int(fire.start[:4]) - 1, int(fire.start[:4]))
+
+
+def test_unknown_fire_is_rejected_with_the_known_names():
+    with pytest.raises(ValueError, match="jasper"):
+        fires.get("nowhere")

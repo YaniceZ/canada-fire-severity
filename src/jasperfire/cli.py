@@ -7,37 +7,37 @@ import json
 from datetime import date, timedelta
 from pathlib import Path
 
-from jasperfire import beetle, burn, canopy, compare, embeddings, figures, lidar, model, perimeter, scenes, sources
+from jasperfire import beetle, burn, canopy, compare, embeddings, figures, fires, lidar, model, perimeter, scenes, sources
 
 
-def _pick(fire):
-    start, end = date.fromisoformat(sources.FIRE_START), date.fromisoformat(sources.FIRE_END)
-    bbox = tuple(fire.to_crs(4326).total_bounds)
+def _pick(fire, outline):
+    start, end = date.fromisoformat(fire.start), date.fromisoformat(fire.end)
+    bbox = tuple(outline.to_crs(4326).total_bounds)
     found = scenes.search(bbox, start - timedelta(days=30), end + timedelta(days=30))
     return scenes.pick_scenes(found, start, end)
 
 
 def cmd_perimeter(args) -> None:
-    fire = perimeter.load_perimeter(args.data)
-    row = fire.iloc[0]
+    outline = perimeter.load_perimeter(args.fire, args.data)
+    row = outline.iloc[0]
     print(f"{row['GID']}: {row['POLY_HA']:,.0f} ha, mapped from {row['FIREMAPS']}")
-    print("bounds (lon/lat):", [round(float(v), 4) for v in fire.to_crs(4326).total_bounds])
+    print("bounds (lon/lat):", [round(float(v), 4) for v in outline.to_crs(4326).total_bounds])
 
 
 def cmd_scenes(args) -> None:
-    pre, post = _pick(perimeter.load_perimeter(args.data))
+    pre, post = _pick(args.fire, perimeter.load_perimeter(args.fire, args.data))
     for label, s in (("pre", pre), ("post", post)):
         print(f"{label:4} {s.id}  {s.day}  cloud {s.cloud:.2f}%")
 
 
 def cmd_dnbr(args) -> None:
-    fire = perimeter.load_perimeter(args.data)
-    pre, post = _pick(fire)
-    print(json.dumps(burn.run(fire, pre, post, args.out), indent=2))
+    outline = perimeter.load_perimeter(args.fire, args.data)
+    pre, post = _pick(args.fire, outline)
+    print(json.dumps(burn.run(outline, pre, post, args.out), indent=2))
 
 
 def cmd_beetle(args) -> None:
-    print(json.dumps(beetle.run(perimeter.load_perimeter(args.data), args.data, args.out), indent=2))
+    print(json.dumps(beetle.run(args.fire, perimeter.load_perimeter(args.fire, args.data), args.data, args.out), indent=2))
 
 
 def cmd_compare(args) -> None:
@@ -45,15 +45,15 @@ def cmd_compare(args) -> None:
 
 
 def cmd_figures(args) -> None:
-    for path in figures.run(args.out, args.data, Path("docs")):
+    for path in figures.run(args.fire, args.out, args.data, Path("docs") / args.fire.key):
         print(path)
 
 
 def cmd_canopy_loss(args) -> None:
-    fire = perimeter.load_perimeter(args.data)
+    outline = perimeter.load_perimeter(args.fire, args.data)
     if not (args.out / "canopy_30m.tif").exists():
-        canopy.build(fire, args.out)
-    print(json.dumps(canopy.analyse(fire, args.out), indent=2))
+        canopy.build(outline, args.out)
+    print(json.dumps(canopy.analyse(args.fire, outline, args.out), indent=2))
 
 
 def cmd_model(args) -> None:
@@ -63,7 +63,7 @@ def cmd_model(args) -> None:
     if cached.exists():
         table = pd.read_csv(cached)
     else:
-        table = model.build_table(perimeter.load_perimeter(args.data), args.data, args.out)
+        table = model.build_table(args.fire, perimeter.load_perimeter(args.fire, args.data), args.data, args.out)
     print(f"{len(table):,} cells in the table")
     print(json.dumps(model.fit(table, args.out), indent=2))
 
@@ -72,7 +72,7 @@ def cmd_embeddings(args) -> None:
     import pandas as pd
 
     table = pd.read_csv(args.out / "pixel_table.csv.gz")
-    print(json.dumps(embeddings.run(table, args.out), indent=2))
+    print(json.dumps(embeddings.run(args.fire, table, args.out), indent=2))
 
 
 def cmd_canopy(args) -> None:
@@ -90,8 +90,9 @@ def cmd_canopy(args) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="jasperfire", description=__doc__)
-    parser.add_argument("--data", type=Path, default=Path("data"), help="download cache")
-    parser.add_argument("--out", type=Path, default=Path("out"), help="results folder")
+    parser.add_argument("--fire", default="jasper", choices=sorted(fires.FIRES), help="which fire to work on")
+    parser.add_argument("--data", type=Path, help="download cache (default: data/<fire>)")
+    parser.add_argument("--out", type=Path, help="results folder (default: out/<fire>)")
     sub = parser.add_subparsers(dest="step", required=True)
     sub.add_parser("perimeter", help="download the fire perimeter").set_defaults(func=cmd_perimeter)
     sub.add_parser("scenes", help="show the Sentinel-2 scenes that would be used").set_defaults(func=cmd_scenes)
@@ -112,6 +113,9 @@ def main(argv: list[str] | None = None) -> None:
     window.add_argument("--years", nargs="+", default=["2019", "2024"], choices=sorted(sources.HRDEM_PROJECTS))
     window.set_defaults(func=cmd_canopy)
     args = parser.parse_args(argv)
+    args.fire = fires.get(args.fire)
+    args.data = args.data or Path("data") / args.fire.key
+    args.out = args.out or Path("out") / args.fire.key
     args.func(args)
 
 

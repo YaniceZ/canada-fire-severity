@@ -12,7 +12,8 @@ from pathlib import Path
 
 import numpy as np
 
-from jasperfire import beetle, sources
+from jasperfire import beetle
+from jasperfire.fires import Fire
 
 INK, MUTED, RULE = "#1a1a1a", "#555555", "#d9d9d9"
 # Sequential yellow-orange-red-brown for the five ordered severity classes.
@@ -20,7 +21,6 @@ SEVERITY_COLORS = ("#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#993404")
 # Brown for drying, blue-green for wetting, matching the BrBG map ramp.
 DECLINE_COLORS = ("#8c510a", "#d8a657", "#9c9c9c", "#35978f")
 DECLINE_SHORT = ("Strong", "Moderate", "Slight", "Stable")
-TOWN = (-118.0814, 52.8737)  # Jasper townsite, lon/lat
 MARGIN_M = 2500.0
 WIDTH_IN = 180 / 25.4
 
@@ -60,7 +60,7 @@ def _style():
     return plt
 
 
-def _layers(out_dir: Path) -> dict:
+def _layers(fire: Fire, out_dir: Path) -> dict:
     """Everything the figure needs, on the 30 m analysis grid."""
     import rasterio
 
@@ -85,8 +85,9 @@ def _layers(out_dir: Path) -> dict:
         grid.width + 2 * pad,
         grid.height + 2 * pad,
     )
-    relief = beetle.read_on_grid(sources.HILLSHADE_URL, relief_grid, "bilinear")
+    relief = beetle.read_on_grid(fire.hillshade_url, relief_grid, "bilinear")
     return {
+        "fire": fire,
         "grid": grid,
         "relief_grid": relief_grid,
         "relief": relief,
@@ -131,9 +132,10 @@ def _base_map(ax, data: dict, perimeter, label: str, title: str) -> None:
     ax.text(-0.02, 1.012, label, transform=ax.transAxes, fontsize=9, fontweight="bold", ha="right", va="bottom")
 
     halo = [_stroke(1.6)]
-    town = gpd.GeoSeries([Point(*TOWN)], crs=4326).to_crs(data["grid"].crs).iloc[0]
+    town_name, town_lon, town_lat = data["fire"].town
+    town = gpd.GeoSeries([Point(town_lon, town_lat)], crs=4326).to_crs(data["grid"].crs).iloc[0]
     ax.plot(town.x, town.y, marker="s", markersize=3, color="white", markeredgecolor=INK, markeredgewidth=0.6, zorder=6)
-    ax.annotate("Jasper", (town.x, town.y), xytext=(3, 3), textcoords="offset points", zorder=6, path_effects=halo)
+    ax.annotate(town_name, (town.x, town.y), xytext=(3, 3), textcoords="offset points", zorder=6, path_effects=halo)
 
     # 5 km scale bar, lower left.
     x0, y0 = box[0] + 1200, box[2] + 1300
@@ -146,7 +148,7 @@ def _base_map(ax, data: dict, perimeter, label: str, title: str) -> None:
     ax.text(xa, ya - 3000, "N", ha="center", va="top", zorder=6, path_effects=halo)
 
 
-def figure(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
+def figure(fire: Fire, out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
     plt = _style()
     from matplotlib.colors import BoundaryNorm, ListedColormap, TwoSlopeNorm
     from matplotlib.patches import Patch
@@ -154,9 +156,9 @@ def figure(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
     from jasperfire import indices
     from jasperfire.perimeter import load_perimeter
 
-    data = _layers(out_dir)
+    data = _layers(fire, out_dir)
     grid = data["grid"]
-    perimeter = load_perimeter(data_dir).to_crs(grid.crs)
+    perimeter = load_perimeter(fire, data_dir).to_crs(grid.crs)
     burn = json.loads((out_dir / "summary.json").read_text(encoding="utf-8"))
     stats = json.loads((out_dir / "comparison.json").read_text(encoding="utf-8"))
     extent = _extent(grid)
@@ -173,7 +175,7 @@ def figure(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
         ax.set_position([pos.x0 + 0.055, pos.y0, pos.width - 0.055, pos.height])
 
     # (a) burn severity
-    _base_map(ax_a, data, perimeter, "a", "Burn severity, 2024")
+    _base_map(ax_a, data, perimeter, "a", f"Burn severity, {fire.start[:4]}")
     classes = np.ma.masked_equal(data["severity"], indices.NODATA_CLASS)
     cmap, norm = ListedColormap(SEVERITY_COLORS), BoundaryNorm(range(6), 5)
     ax_a.imshow(classes, extent=extent, cmap=cmap, norm=norm, interpolation="nearest", alpha=0.88, zorder=2)
@@ -210,7 +212,7 @@ def figure(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
     # (c) yearly NDMI by decline class
     groups = np.where(data["study"], beetle.classify_decline(data["change"]), 255)
     years = data["years"]
-    for period in (sources.BEETLE_BASELINE, sources.BEETLE_RECENT):
+    for period in (fire.decline_baseline, fire.decline_recent):
         ax_c.axvspan(period[0] - 0.4, period[-1] + 0.4, color="#f0f0f0", linewidth=0, zorder=0)
     for index, color in enumerate(DECLINE_COLORS):
         series = [float(np.nanmean(band[groups == index])) for band in data["annual"]]
@@ -218,8 +220,8 @@ def figure(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
         end = (years[-1], series[-1])
         ax_c.annotate(DECLINE_SHORT[index], end, xytext=(4, 0), textcoords="offset points", va="center")
     low = ax_c.get_ylim()[0]
-    ax_c.text(sources.BEETLE_BASELINE[1], low, "baseline", ha="center", va="bottom", color=MUTED, fontsize=6)
-    ax_c.text(sources.BEETLE_RECENT[1] - 0.6, low, "recent", ha="center", va="bottom", color=MUTED, fontsize=6)
+    ax_c.text(fire.decline_baseline[1], low, "baseline", ha="center", va="bottom", color=MUTED, fontsize=6)
+    ax_c.text(fire.decline_recent[1] - 0.6, low, "recent", ha="center", va="bottom", color=MUTED, fontsize=6)
     ax_c.set_xticks(years[::2])
     ax_c.set_xlim(years[0] - 0.6, years[-1] + 4.6)
     ax_c.set_ylabel("Mean summer NDMI")
@@ -272,7 +274,7 @@ def _violins(ax, samples: list[np.ndarray], colors, labels, value_y: float) -> N
     ax.set_xticks(range(len(samples)), labels)
 
 
-def canopy_figure(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
+def canopy_figure(fire: Fire, out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
     """Figure 2: LiDAR canopy height loss as a map, by burn severity class and by decline class."""
     plt = _style()
     from rasterio.features import geometry_mask
@@ -280,9 +282,9 @@ def canopy_figure(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
     from jasperfire import canopy, indices
     from jasperfire.perimeter import load_perimeter
 
-    data = _layers(out_dir)
+    data = _layers(fire, out_dir)
     grid = data["grid"]
-    perimeter = load_perimeter(data_dir).to_crs(grid.crs)
+    perimeter = load_perimeter(fire, data_dir).to_crs(grid.crs)
     stats = json.loads((out_dir / "canopy_summary.json").read_text(encoding="utf-8"))
 
     loss = beetle.read_on_grid(str(out_dir / "canopy_height_loss.tif"), grid)
@@ -483,10 +485,11 @@ def embedding_figure(out_dir: Path, fig_dir: Path) -> list[Path]:
     return paths
 
 
-def run(out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
-    paths = figure(out_dir, data_dir, fig_dir)
+def run(fire: Fire, out_dir: Path, data_dir: Path, fig_dir: Path) -> list[Path]:
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    paths = figure(fire, out_dir, data_dir, fig_dir)
     if (out_dir / "canopy_summary.json").exists():
-        paths += canopy_figure(out_dir, data_dir, fig_dir)
+        paths += canopy_figure(fire, out_dir, data_dir, fig_dir)
     if (out_dir / "model_summary.json").exists():
         paths += model_figure(out_dir, fig_dir)
     if (out_dir / "embedding_summary.json").exists():

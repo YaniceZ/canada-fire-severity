@@ -8,10 +8,10 @@ from pathlib import Path
 
 import geopandas as gpd
 
-from jasperfire import sources
+from jasperfire.fires import Fire
 
 
-def download_nbac(dest: Path, url: str = sources.NBAC_URL) -> Path:
+def download_nbac(dest: Path, url: str) -> Path:
     """Download and unzip the NBAC shapefile into `dest`. Returns the .shp path."""
     dest.mkdir(parents=True, exist_ok=True)
     existing = sorted(dest.glob("*.shp"))
@@ -31,7 +31,7 @@ def download_nbac(dest: Path, url: str = sources.NBAC_URL) -> Path:
     return sorted(dest.glob("*.shp"))[0]
 
 
-def select_fire(fires: gpd.GeoDataFrame, gid: str = sources.JASPER_GID) -> gpd.GeoDataFrame:
+def select_fire(fires: gpd.GeoDataFrame, gid: str) -> gpd.GeoDataFrame:
     """Return the single row whose GID matches. Fails if there is not exactly one."""
     match = fires[fires["GID"] == gid]
     if len(match) != 1:
@@ -39,12 +39,12 @@ def select_fire(fires: gpd.GeoDataFrame, gid: str = sources.JASPER_GID) -> gpd.G
     return match.reset_index(drop=True)
 
 
-def load_perimeter(data_dir: Path) -> gpd.GeoDataFrame:
-    """Fetch the Jasper fire perimeter, caching it as GeoPackage under `data_dir`."""
-    cached = data_dir / "jasper_perimeter.gpkg"
+def load_perimeter(fire: Fire, data_dir: Path) -> gpd.GeoDataFrame:
+    """Fetch the final perimeter of `fire`, caching it as GeoPackage under `data_dir`."""
+    cached = data_dir / f"{fire.key}_perimeter.gpkg"
     if cached.exists():
         return gpd.read_file(cached)
-    shp = download_nbac(data_dir / "nbac")
-    fire = select_fire(gpd.read_file(shp))
-    fire.to_file(cached, driver="GPKG")
-    return fire
+    shp = download_nbac(data_dir / "nbac", fire.perimeter_url)
+    outline = select_fire(gpd.read_file(shp), fire.perimeter_id)
+    outline.to_file(cached, driver="GPKG")
+    return outline
