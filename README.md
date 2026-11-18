@@ -6,9 +6,9 @@ Burn severity, pre-fire forest decline and canopy loss for two Canadian wildfire
 
 ## The question
 
-Mountain pine beetle killed much of the lodgepole pine around Jasper in the years before the fire. Did the beetle-killed stands burn more severely than the stands that were still green? Federal reports name the dead pine as one factor in how fast the fire spread. This project looks at severity, pixel by pixel, with public data.
+Mountain pine beetle killed much of the lodgepole pine around Jasper in the years before the fire. Did the beetle-killed stands burn more severely than the stands that were still green? Federal reports name the dead pine as one factor in how fast the fire spread. This project looks at severity, pixel by pixel, with public data, first at Jasper and then at a second fire to see whether the workflow and the answer carry over.
 
-## What it found so far
+## First fire: Jasper, 2024
 
 ![Four panels: burn severity map, NDMI change map, yearly NDMI by decline class, and burn ratio by decline class](docs/jasper/figure1.png)
 
@@ -102,13 +102,13 @@ For seeing what the fire did, the difference is large. The burn ratio alone expl
 
 The 2023 embedding also recovers the Landsat NDMI decline with an R² of 0.78, so it already carries the information the decline map was built to capture.
 
-Caveats: this is one fire and three block splits. The 2024 embedding mixes months before and after the fire. And the LiDAR height loss it is scored against has its own weakness with thin burned stems, described above.
+Caveats: these are three block splits on one fire. The 2024 embedding mixes months before and after the fire. And the LiDAR height loss it is scored against has its own weakness with thin burned stems, described above.
 
 ## Second fire: McDougall Creek, 2023
 
 ![Four panels for McDougall Creek: burn severity map, pre-fire NDMI change map, yearly NDMI by class, and burn ratio by class](docs/mcdougall/figure1.png)
 
-The McDougall Creek fire burned 12,969 ha above West Kelowna in August and September 2023 and destroyed 189 structures. It is a different forest from Jasper: drier Douglas-fir and pine in the Okanagan, logged for decades, with no recent beetle outbreak on the scale of Jasper's. The point of running it was to see what of the Jasper workflow and results carries over.
+The McDougall Creek fire burned 12,969 ha above West Kelowna in August and September 2023 and destroyed or damaged 189 structures. It is a different forest from Jasper: drier Douglas-fir and pine in the Okanagan, logged for decades, with no recent beetle outbreak on the scale of Jasper's. The point of running it was to see what of the Jasper workflow and results carries over.
 
 **The decline map picks up logging, not just dying trees.** On the first run, 75% of the strongest-decline area sat inside cutblocks that BC's consolidated cutblocks layer records as harvested between 2013 and 2022. A clearcut drops NDMI as sharply as a beetle kill. Jasper is a national park with no logging, so this never showed there. The workflow now drops land harvested during the record when a fire is in BC (451 ha here). After that, only 5% of the conifer forest declined by more than 0.05, against 56% at Jasper; most of what is left is a dip in 2021, the summer of the heat dome.
 
@@ -147,17 +147,17 @@ Two fires are still two cases. McDougall Creek had too little decline to be a st
 pip install -e ".[dev]"
 # every step takes --fire jasper (the default) or --fire mcdougall
 firesev perimeter      # fire perimeter from the National Burned Area Composite
-firesev dnbr           # dNBR, RBR and severity classes as GeoTIFFs in out/jasper/
+firesev dnbr           # dNBR, RBR and severity classes as GeoTIFFs in out/<fire>/
 firesev beetle         # yearly Landsat NDMI and the change map (about 8 minutes)
 firesev compare        # severity by decline class
-firesev canopy-loss    # LiDAR canopy height loss for the whole fire (about 6 minutes)
+firesev canopy-loss    # LiDAR canopy height loss for the whole fire, Jasper only (about 6 minutes)
 firesev model          # nested models with spatial block validation (about 4 minutes)
 firesev embeddings     # hand-made predictors against AlphaEarth embeddings (about 4 minutes)
-firesev figures        # the figures above, into docs/jasper/
+firesev figures        # the figures above, into docs/<fire>/
 firesev canopy --lon -118.0989 --lat 52.8466    # LiDAR canopy cover in one 500 m window
 ```
 
-What is specific to one fire (dates, perimeter, land cover, terrain, the years compared) lives in `src/firesev/fires.py`, and every step takes `--fire <key>`. Jasper is the only entry so far.
+What is specific to one fire (dates, perimeter, land cover, terrain, the years compared) lives in `src/firesev/fires.py`, and every step takes `--fire <key>`. Adding a fire means adding one entry there; steps that need LiDAR from before and after the fire are skipped when it does not exist.
 
 Every step reads only the window it needs from cloud-hosted files. Nothing large is stored apart from the burned-area shapefiles, though `canopy-loss` streams several gigabytes of LiDAR.
 
@@ -165,23 +165,23 @@ Every step reads only the window it needs from cloud-hosted files. Nothing large
 
 | Data | Source | Resolution | Checked |
 |---|---|---|---|
-| Fire perimeter | National Burned Area Composite 2024, fire `2024_451`, 31,645 ha | vector | yes |
-| Optical imagery | Sentinel-2 L2A on Earth Search (STAC, cloud-optimized GeoTIFF) | 10–20 m | yes |
-| LiDAR before the fire | CanElevation HRDEM, Jasper Park 2019 | 1 m | yes |
-| LiDAR after the fire | CanElevation HRDEM, Jasper 2024 and Jasper 2025 | 1 m | yes |
-| Pre-fire decline | Landsat 8/9 Collection 2 Level-2 on the Planetary Computer, 2013–2023 | 30 m | yes |
-| Conifer mask | Land Cover of Canada, 2010 edition | 30 m | yes |
-| Earlier fires | National Burned Area Composite, 2013–2023 (4.6 ha inside the perimeter) | vector | yes |
-| Terrain | MRDEM 30 m terrain model (CanElevation) | 30 m | yes |
-| Fire detections | CWFIS hotspots 2024 (VIIRS), with interpolated fire weather | 375 m | yes |
-| Foundation model embeddings | AlphaEarth Foundations Satellite Embedding, 2023 and 2024, Source Cooperative copy | 10 m | yes |
+| Jasper perimeter | National Burned Area Composite 2024, fire `2024_451`, 31,645 ha | vector | yes |
 | McDougall Creek perimeter | National Burned Area Composite 2023, fire `2023_834`, 12,969 ha | vector | yes |
-| Harvest history (BC) | BC consolidated cutblocks, from the province's open WFS | vector | yes |
-| Beetle survey | No open spatial layer found for inside the park | – | no |
+| Optical imagery | Sentinel-2 L2A on Earth Search (STAC, cloud-optimized GeoTIFF) | 10–20 m | yes |
+| LiDAR before the fire | CanElevation HRDEM, Jasper Park 2019 (Jasper only) | 1 m | yes |
+| LiDAR after the fire | CanElevation HRDEM, Jasper 2024 and Jasper 2025 (none flown at McDougall Creek) | 1 m | yes |
+| Pre-fire decline | Landsat 8/9 Collection 2 Level-2 on the Planetary Computer, 2013 to the summer before each fire | 30 m | yes |
+| Conifer mask | Land Cover of Canada, 2010 edition | 30 m | yes |
+| Earlier fires | National Burned Area Composite for the years of the decline record (4.6 ha inside Jasper, 110 ha inside McDougall Creek) | vector | yes |
+| Terrain | MRDEM 30 m terrain model (CanElevation) | 30 m | yes |
+| Fire detections | CWFIS hotspots 2023 and 2024 (VIIRS), with interpolated fire weather | 375 m | yes |
+| Foundation model embeddings | AlphaEarth Foundations Satellite Embedding, the year before and the year of each fire, Source Cooperative copy | 10 m | yes |
+| Harvest history (BC) | BC consolidated cutblocks, from the province's open WFS (McDougall Creek) | vector | yes |
+| Beetle survey | No open spatial layer found for inside Jasper National Park | – | no |
 
 Alberta publishes its beetle aerial surveys for provincial land, not for the national park, so the decline map here stands in for a survey layer. Checking it against Parks Canada's own survey data is still to do.
 
-No open sub-metre imagery of this fire was found. Maxar's open data programme released imagery for the 2023 Kelowna and Northwest Territories fires and the 2025 Los Angeles fires, but not for Jasper. The 1 m LiDAR fills that gap here.
+No open sub-metre imagery of the Jasper fire was found; Maxar's open data programme covered the 2023 McDougall Creek, Northwest Territories and 2025 Los Angeles fires, but not Jasper. The 1 m LiDAR fills that gap there. The McDougall Creek imagery is not used yet.
 
 ## Next
 
@@ -197,7 +197,7 @@ ruff check .
 pytest -q
 ```
 
-The 37 tests run offline. They cover the index maths, reflectance scaling, cloud masking, yearly compositing, scene choice, canopy height and cover per cell, slope and aspect, matching cells to fire detections, the block split and the comparison table.
+The 37 tests run offline. They cover the index maths, reflectance scaling, cloud masking, yearly compositing, scene choice, canopy height and cover per cell, slope and aspect, matching cells to fire detections, the block split, the comparison table, the per-fire settings and dropping LiDAR columns for fires without LiDAR.
 
 ## Credits
 
